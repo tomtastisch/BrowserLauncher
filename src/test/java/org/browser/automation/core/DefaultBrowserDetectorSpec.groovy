@@ -13,9 +13,11 @@ class DefaultBrowserDetectorSpec extends Specification {
     DefaultBrowserDetector detector = DefaultBrowserDetector.getInstance()
 
     def "Detect default browser should not throw exceptions"() {
-        expect:
+        when:
+        def browserInfo = detector.getDefaultBrowserInfo()
+
+        then:
         noExceptionThrown()
-        detector.getDefaultBrowserInfo()
     }
 
     def "Browser information should be present if a matching configuration is found"() {

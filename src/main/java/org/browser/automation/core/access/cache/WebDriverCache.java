@@ -1,23 +1,16 @@
 package org.browser.automation.core.access.cache;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.openqa.selenium.WebDriver;
 import org.jetbrains.annotations.NotNull;
+import org.openqa.selenium.WebDriver;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * A thread-safe cache for managing multiple WebDriver instances.
@@ -29,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>The cache does not handle the creation of WebDriver instances;
  * they must be provided externally and are managed by this class.</p>
- *
+ * <p>
  * Example usage:
  * <pre>
  * WebDriverCache cache = WebDriverCache.getInstance();
@@ -41,17 +34,34 @@ import java.util.concurrent.TimeUnit;
 @Getter
 public class WebDriverCache {
 
+    /**
+     * A thread-safe map for storing WebDriver instances. The keys represent unique identifiers
+     * (e.g., browser names), and the values are WebDriver instances.
+     */
     @JsonIgnore
     private final ConcurrentMap<String, WebDriver> driverCache = new ConcurrentHashMap<>();
 
+    /**
+     * A scheduler service used for running automatic cache cleanup tasks at regular intervals.
+     */
     @JsonIgnore
     private final ScheduledExecutorService scheduler;
 
+    /**
+     * The time duration after which inactive WebDriver instances are eligible for cleanup.
+     */
     @JsonIgnore
     private final Duration inactivityTimeout;
 
+    /**
+     * Determines if automatic cleanup is enabled.
+     */
     private final boolean autoCleanupEnabled;
 
+    /**
+     * The Jackson ObjectMapper used for JSON serialization and deserialization of the cache.
+     * This is ignored in serialization processes to avoid circular dependencies.
+     */
     @JsonIgnore
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -75,12 +85,20 @@ public class WebDriverCache {
         return SingletonHelper.INSTANCE;
     }
 
+    /**
+     * Private constructor for {@code WebDriverCache}. This is initialized via the builder.
+     * The constructor is marked private to enforce the singleton pattern.
+     *
+     * @param autoCleanupEnabled whether automatic cleanup is enabled
+     * @param inactivityTimeout  the duration after which inactive WebDriver instances are removed
+     */
     @Builder
     private WebDriverCache(boolean autoCleanupEnabled, @NonNull Duration inactivityTimeout) {
         this.autoCleanupEnabled = autoCleanupEnabled;
         this.inactivityTimeout = inactivityTimeout;
         this.scheduler = Executors.newSingleThreadScheduledExecutor();
 
+        // If auto-cleanup is enabled, start the scheduled cleanup task
         if (autoCleanupEnabled) {
             startAutoCleanup();
         }
@@ -109,6 +127,7 @@ public class WebDriverCache {
 
     /**
      * Removes a WebDriver instance from the cache based on the given key.
+     * If a WebDriver is found and removed, its {@code quit()} method is called to clean up resources.
      *
      * @param key the unique identifier for the WebDriver instance
      */
@@ -122,6 +141,7 @@ public class WebDriverCache {
     /**
      * Starts the automatic cleanup process for the cache. The cleanup runs at the specified
      * inactivity interval and removes WebDriver instances that have been inactive.
+     * This method schedules the cleanup task to run periodically.
      */
     private void startAutoCleanup() {
         scheduler.scheduleAtFixedRate(() -> {
@@ -132,24 +152,6 @@ public class WebDriverCache {
                 // Implement actual inactivity tracking logic here
             });
         }, inactivityTimeout.toMinutes(), inactivityTimeout.toMinutes(), TimeUnit.MINUTES);
-    }
-
-    /**
-     * Converts the driver cache to a simplified JSON string representation.
-     * WebDriver instances themselves are not included in the JSON for serialization reasons.
-     *
-     * @return JSON representation of the driver cache
-     */
-    public String toJson() {
-        try {
-            Map<String, String> simplifiedCache = new HashMap<>();
-            driverCache.forEach((key, value) -> simplifiedCache.put(key, value.getClass().getSimpleName()));
-
-            return objectMapper.writeValueAsString(simplifiedCache);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to convert driver cache to JSON", e);
-            return "{}";
-        }
     }
 
     /**

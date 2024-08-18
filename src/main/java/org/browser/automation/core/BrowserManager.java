@@ -5,43 +5,83 @@ import org.browser.automation.core.access.cache.WebDriverCache;
 import org.openqa.selenium.WebDriver;
 
 /**
- * Manages browser operations, including opening new windows or tabs.
- * This class utilizes the WebDriverCache to ensure all WebDriver instances are centrally managed.
+ * The {@code BrowserManager} class is responsible for managing browser operations,
+ * including opening new windows or tabs. It uses the {@code WebDriverCache} to centrally manage
+ * and retrieve {@code WebDriver} instances. This class follows the Singleton design pattern
+ * to ensure a single instance is used throughout the application.
+ *
+ * <p>Key responsibilities of this class include:
+ * <ul>
+ *     <li>Opening a new browser window.</li>
+ *     <li>Opening a new browser tab.</li>
+ *     <li>Retrieving a cached WebDriver instance.</li>
+ * </ul>
+ *
+ * <p>The class provides flexibility for testability by allowing a custom {@code WebDriverCache}
+ * instance to be injected, which can be useful when mocking or spying during unit tests.
  */
 @Slf4j
 public class BrowserManager {
 
-    private final WebDriverCache webDriverCache = WebDriverCache.getInstance();
+    private final WebDriverCache webDriverCache;
 
-    // Singleton pattern with the SingletonHelper for thread safety
+    /**
+     * Singleton Helper class for lazy-loading the Singleton instance.
+     */
     private static class SingletonHelper {
-        private static final BrowserManager INSTANCE = new BrowserManager();
+        private static final BrowserManager INSTANCE = new BrowserManager(WebDriverCache.getInstance());
     }
 
+    /**
+     * Retrieves the Singleton instance of {@code BrowserManager} using the default {@code WebDriverCache}.
+     *
+     * @return the Singleton instance of {@code BrowserManager}.
+     */
     public static BrowserManager getInstance() {
         return SingletonHelper.INSTANCE;
     }
 
-    private BrowserManager() {
-        // Constructor is private to prevent external instantiation
+    /**
+     * Creates a new instance of {@code BrowserManager} with a custom {@code WebDriverCache}.
+     * This is useful for injecting a mock or spy during testing.
+     *
+     * @param webDriverCache the {@code WebDriverCache} instance to be used by this {@code BrowserManager}.
+     * @return a new instance of {@code BrowserManager} with the specified cache.
+     */
+    public static BrowserManager getInstance(WebDriverCache webDriverCache) {
+        return new BrowserManager(webDriverCache);
     }
 
     /**
-     * Opens a new browser window and returns the WebDriver instance.
+     * Private constructor to prevent external instantiation. Initializes the {@code BrowserManager}
+     * with the specified {@code WebDriverCache} instance.
      *
-     * @param driverName The name of the WebDriver instance.
-     * @return The WebDriver instance.
+     * @param webDriverCache the {@code WebDriverCache} instance to be used.
+     */
+    private BrowserManager(WebDriverCache webDriverCache) {
+        this.webDriverCache = webDriverCache;
+    }
+
+    /**
+     * Opens a new browser window and returns the associated {@code WebDriver} instance.
+     * If the driver is not found in the cache, an error is logged and an exception is thrown.
+     *
+     * @param driverName the name of the {@code WebDriver} instance.
+     * @return the {@code WebDriver} instance associated with the new window.
+     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
      */
     public WebDriver openNewWindow(String driverName) {
         return handleBrowserOperation(driverName, "window");
     }
 
     /**
-     * Opens a new browser tab or a new window based on the provided boolean flag.
+     * Opens a new browser tab or a new window based on the provided flag.
+     * If {@code openNewWindow} is true, a new window is opened; otherwise, a new tab is opened.
      *
-     * @param driverName The name of the WebDriver instance.
-     * @param openNewWindow If true, opens a new window; otherwise, opens a new tab.
-     * @return The WebDriver instance.
+     * @param driverName    the name of the {@code WebDriver} instance.
+     * @param openNewWindow if true, opens a new window; otherwise, opens a new tab.
+     * @return the {@code WebDriver} instance associated with the operation.
+     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
      */
     public WebDriver openNewTab(String driverName, boolean openNewWindow) {
         if (openNewWindow) {
@@ -51,20 +91,22 @@ public class BrowserManager {
     }
 
     /**
-     * Opens a new browser tab. By default, it does not open a new window.
+     * Opens a new browser tab by default, without opening a new window.
      *
-     * @param driverName The name of the WebDriver instance.
-     * @return The WebDriver instance.
+     * @param driverName the name of the {@code WebDriver} instance.
+     * @return the {@code WebDriver} instance associated with the new tab.
+     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
      */
     public WebDriver openNewTab(String driverName) {
         return openNewTab(driverName, false);
     }
 
     /**
-     * Retrieves the WebDriver instance by name.
+     * Retrieves the cached {@code WebDriver} instance associated with the given driver name.
+     * If the driver is not found, {@code null} is returned.
      *
-     * @param driverName The name of the WebDriver instance.
-     * @return The WebDriver instance, or null if not found.
+     * @param driverName the name of the {@code WebDriver} instance.
+     * @return the cached {@code WebDriver} instance, or {@code null} if not found.
      */
     public WebDriver getWebDriver(String driverName) {
         return webDriverCache.getDriver(driverName);
@@ -72,10 +114,13 @@ public class BrowserManager {
 
     /**
      * Handles the common logic for browser operations (like opening new windows or tabs).
+     * Logs the operation being performed and retrieves the corresponding {@code WebDriver} instance
+     * from the cache. If the driver is not found, an exception is thrown.
      *
-     * @param driverName The name of the WebDriver instance.
-     * @param operationType The type of operation being performed (e.g., "window" or "tab").
-     * @return The WebDriver instance.
+     * @param driverName    the name of the {@code WebDriver} instance.
+     * @param operationType the type of operation being performed (e.g., "window" or "tab").
+     * @return the {@code WebDriver} instance associated with the operation.
+     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
      */
     private WebDriver handleBrowserOperation(String driverName, String operationType) {
         log.info("Performing operation '{}' for driver: {}", operationType, driverName);

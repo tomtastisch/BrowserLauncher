@@ -17,7 +17,7 @@
         <lombok.version>1.18.34</lombok.version>
         <typesafe.config.version>1.4.2</typesafe.config.version>
         <slf4j.version>2.0.16</slf4j.version>
-        <reflections.version>0.9.12</reflections.version>
+        <reflections.version>0.10.2</reflections.version>
         <selenium.version>4.17.0</selenium.version>
         <mockito.version>5.12.0</mockito.version>
         <junit.version>5.8.2</junit.version>
@@ -26,13 +26,35 @@
         <logging.version>1.2</logging.version>
         <maven.surefire.version>3.1.2</maven.surefire.version>
         <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
-        <groovy.version>3.0.12</groovy.version>
+        <groovy.version>3.0.22</groovy.version>
         <spock.version>2.3-groovy-3.0</spock.version>
 
         <!-- Set the source encoding for your project -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
+
+    <profiles>
+        <profile>
+            <id>run-its</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <!-- Spezifische Build-Konfigurationen hier -->
+            </build>
+        </profile>
+
+        <profile>
+            <id>docs</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <!-- Konfiguration für das "docs"-Profil -->
+            </build>
+        </profile>
+    </profiles>
 
     <dependencies>
         <!-- Lombok: Reduces boilerplate code -->
@@ -194,7 +216,7 @@
                     <execution>
                         <goals>
                             <goal>compile</goal>
-                            <goal>compileTests</goal> <!-- Correct goal for compiling Groovy tests -->
+                            <goal>compileTests</goal>
                         </goals>
                     </execution>
                 </executions>
