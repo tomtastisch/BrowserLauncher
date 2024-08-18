@@ -1,11 +1,12 @@
 package org.browser.automation.core;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.text.MessageFormat;
-import java.util.*;
-
-import com.sun.tools.javac.Main;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
+import lombok.Builder;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.exception.PackageNotFoundException;
 import org.browser.automation.core.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
@@ -14,14 +15,12 @@ import org.openqa.selenium.WebDriver;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
-
-import lombok.Builder;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * The {@code Browser} class is responsible for managing browser configuration and retrieving
