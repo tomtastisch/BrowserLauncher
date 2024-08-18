@@ -84,7 +84,7 @@ public class DefaultBrowserDetector {
                                 path,
                                 driverClass
                         ));
-                    } catch (ClassNotFoundException e) {
+                    } catch (Exception e) {
                         log.error("Driver class not found: {}", browser.getString("driverClass"), e);
                     }
                 }

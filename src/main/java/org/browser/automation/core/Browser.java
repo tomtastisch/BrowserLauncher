@@ -1,22 +1,27 @@
 package org.browser.automation.core;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.text.MessageFormat;
+import java.util.*;
+
+import com.sun.tools.javac.Main;
+import org.browser.automation.core.exception.PackageNotFoundException;
+import org.browser.automation.core.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
 import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.WebDriver;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
+
+import lombok.Builder;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The {@code Browser} class is responsible for managing browser configuration and retrieving
@@ -38,6 +43,10 @@ import java.util.Set;
 public class Browser {
 
     private final ConfigurationProvider configProvider;
+
+    public Browser() {
+        this(new ConfigurationProvider());
+    }
 
     /**
      * Constructs the {@code Browser} instance with the given configuration provider.
@@ -74,10 +83,16 @@ public class Browser {
 
     /**
      * Retrieves the default browser information based on the current operating system.
-     * The method looks up browser paths and driver classes from the configuration file.
+     * The method reads browser configurations from the application configuration and
+     * determines the most appropriate browser based on the available settings and the OS.
      *
-     * @return an {@code Optional} containing the {@code BrowserInfo} if a matching configuration is found,
-     * otherwise an empty {@code Optional}
+     * <p>The method filters browser configurations based on the existence of the browser executable,
+     * then attempts to resolve the WebDriver class dynamically. If a valid configuration is found,
+     * it returns an {@code Optional} containing the corresponding {@code BrowserInfo}.</p>
+     *
+     * @return An {@code Optional} containing the {@code BrowserInfo} if a matching browser configuration is found,
+     * or an empty {@code Optional} if no suitable configuration is detected.
+     * @throws ConfigException.Missing If the configuration for the detected OS is missing.
      */
     public Optional<BrowserInfo> getDefaultBrowserInfo() {
         String osKey = OSUtils.getOSKey(); // Get the OS key using the utility class
@@ -87,26 +102,10 @@ public class Browser {
             // Retrieve the list of browser configurations for the detected OS
             List<? extends Config> browserConfigs = config.getConfigList("osBrowserPaths." + osKey);
 
-            // Iterate over the list of browser configurations
-            for (Config browser : browserConfigs) {
-                String path = browser.getString("path");
-                String driverClassName = browser.getString("driverClass");
-
-                // Check if the browser executable exists at the specified path
-                if (Files.exists(Paths.get(path))) {
-                    try {
-                        // Get the WebDriver class using the driver class name
-                        Class<? extends WebDriver> driverClass = getDriverClass(driverClassName);
-                        return Optional.of(new BrowserInfo(
-                                browser.getString("name"),
-                                path,
-                                driverClass
-                        ));
-                    } catch (ClassNotFoundException e) {
-                        log.error("Driver class not found: {}", driverClassName, e);
-                    }
-                }
-            }
+            return browserConfigs.stream()
+                    .filter(browser -> Files.exists(Paths.get(browser.getString("path"))))
+                    .flatMap(browser -> getBrowserInfo(browser).stream()) // Directly flatten Optional<BrowserInfo>
+                    .findFirst();
         } catch (ConfigException.Missing e) {
             log.error("Configuration for OS {} is missing.", osKey, e);
         }
@@ -116,24 +115,61 @@ public class Browser {
     }
 
     /**
-     * Retrieves the WebDriver class based on its fully qualified class name.
-     * The method uses the Reflections library to dynamically locate the class within the specified package.
+     * Resolves the {@code BrowserInfo} based on the provided browser configuration.
+     * This method dynamically loads the WebDriver class specified in the configuration and
+     * creates a {@code BrowserInfo} object containing the browser's name, path, and WebDriver class.
      *
-     * @param driverClassName the fully qualified name of the WebDriver class
-     * @return the {@code Class} object corresponding to the WebDriver class
-     * @throws ClassNotFoundException if the class cannot be found in the specified package
+     * <p>The method uses {@code @SneakyThrows} to avoid handling {@code ClassNotFoundException}
+     * explicitly, as this exception is not expected to occur during regular use.</p>
+     *
+     * @param browser The {@code Config} object representing the browser configuration.
+     * @return An {@code Optional} containing the {@code BrowserInfo} if the WebDriver class can be resolved.
      */
-    protected static Class<? extends WebDriver> getDriverClass(String driverClassName) throws ClassNotFoundException {
-        // Perform a scan of all packages and sub-packages dynamically
-        Reflections reflections = new Reflections(Scanners.SubTypes);
+    @SneakyThrows
+    private Optional<BrowserInfo> getBrowserInfo(Config browser) {
+        String path = browser.getString("path");
+        String driverClassName = browser.getString("driverClass");
+        Class<? extends WebDriver> driverClass = getDriverClass(driverClassName);
 
-        // Dynamically locate the WebDriver class by its fully qualified name
-        Set<Class<? extends WebDriver>> subTypes = reflections.getSubTypesOf(WebDriver.class);
+        return Optional.of(new BrowserInfo(
+                browser.getString("name"),
+                path,
+                driverClass
+        ));
+    }
+
+    /**
+     * Resolves and retrieves a WebDriver class based on the provided class name.
+     * The method handles both fully qualified class names (e.g., "org.openqa.selenium.safari.SafariDriver")
+     * and package paths (e.g., "org.openqa.selenium.safari"). If the input is a fully qualified class name
+     * and no matching class is found, the method throws a {@link WebdriverNotFoundException}. If the input
+     * is a package path and no WebDriver classes are found within that package, a {@link PackageNotFoundException} is thrown.
+     *
+     * <p>The method uses logging to provide detailed information about the processing steps,
+     * making it easier to track decisions and potential issues during execution.</p>
+     *
+     * @param driverClassName The class name or package path for the WebDriver class to be resolved.
+     * @return The resolved WebDriver class if a match is found.
+     */
+    @SneakyThrows
+    protected static Class<? extends WebDriver> getDriverClass(String driverClassName) {
+        log.info("Resolving WebDriver class for: {}", driverClassName);
+
+        String packagePath = Arrays.stream(driverClassName.split("\\."))
+                .reduce((acc, part) -> {
+                    String currentPath = acc.isEmpty() ? part : acc + "." + part;
+                    return !new Reflections(currentPath, Scanners.SubTypes).getSubTypesOf(WebDriver.class).isEmpty() ? currentPath : acc;
+                }).orElse(null);
+
+        Set<Class<? extends WebDriver>> subTypes = new Reflections(packagePath, Scanners.SubTypes).getSubTypesOf(WebDriver.class);
 
         return subTypes.stream()
                 .filter(clazz -> clazz.getName().equals(driverClassName))
                 .findFirst()
-                .orElseThrow(() -> new ClassNotFoundException("WebDriver class not found: " + driverClassName));
+                .or(() -> subTypes.stream().findFirst())
+                .orElseThrow(() -> driverClassName.contains(".")
+                        ? new WebdriverNotFoundException("The class '" + driverClassName + "' does not match any available WebDriver class. Please check the class path and ensure the class exists.")
+                        : new PackageNotFoundException("No WebDriver class found in the package path: '" + packagePath + "'."));
     }
 
     /**

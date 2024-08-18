@@ -9,11 +9,15 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
+    <!-- Project Properties -->
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <!-- Dependency Versions -->
         <lombok.version>1.18.34</lombok.version>
         <typesafe.config.version>1.4.2</typesafe.config.version>
         <slf4j.version>2.0.16</slf4j.version>
@@ -28,21 +32,15 @@
         <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
         <groovy.version>3.0.22</groovy.version>
         <spock.version>2.3-groovy-3.0</spock.version>
-
-        <!-- Set the source encoding for your project -->
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
+    <!-- Project Profiles -->
     <profiles>
         <profile>
             <id>run-its</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
-            <build>
-                <!-- Spezifische Build-Konfigurationen hier -->
-            </build>
         </profile>
 
         <profile>
@@ -50,12 +48,10 @@
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
-            <build>
-                <!-- Konfiguration für das "docs"-Profil -->
-            </build>
         </profile>
     </profiles>
 
+    <!-- Project Dependencies -->
     <dependencies>
         <!-- Lombok: Reduces boilerplate code -->
         <dependency>
@@ -65,14 +61,14 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Typesafe Config for configuration management -->
+        <!-- Configuration Management -->
         <dependency>
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
             <version>${typesafe.config.version}</version>
         </dependency>
 
-        <!-- SLF4J API for logging -->
+        <!-- Logging Framework -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -85,14 +81,14 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Reflections library for runtime classpath scanning -->
+        <!-- Runtime Classpath Scanning -->
         <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
             <version>${reflections.version}</version>
         </dependency>
 
-        <!-- Selenium WebDriver for browser automation -->
+        <!-- Selenium WebDriver for Browser Automation -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
@@ -105,7 +101,7 @@
             </exclusions>
         </dependency>
 
-        <!-- Mockito for testing -->
+        <!-- Testing Frameworks -->
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -118,8 +114,6 @@
             <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
-
-        <!-- JUnit 5 for testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -133,15 +127,12 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- JetBrains Annotations -->
+        <!-- Annotations and Utility Libraries -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
             <version>${annotations.version}</version>
-            <scope>compile</scope>
         </dependency>
-
-        <!-- Jackson for JSON serialization and deserialization -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -158,14 +149,7 @@
             <version>${jackson.version}</version>
         </dependency>
 
-        <!-- Commons Logging for additional logging features -->
-        <dependency>
-            <groupId>commons-logging</groupId>
-            <artifactId>commons-logging</artifactId>
-            <version>${logging.version}</version>
-        </dependency>
-
-        <!-- Groovy and Spock for advanced testing capabilities -->
+        <!-- Groovy and Spock for Testing -->
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy</artifactId>
@@ -178,10 +162,37 @@
             <version>${spock.version}</version>
             <scope>test</scope>
         </dependency>
+
+
     </dependencies>
 
     <build>
+
+
+        <!--resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>target/classes/context</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources-->
+
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <encoding>${project.reporting.outputEncoding}</encoding>
+                </configuration>
+            </plugin>
             <!-- Maven Surefire Plugin for running tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

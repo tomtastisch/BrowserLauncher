@@ -2,7 +2,10 @@ package org.browser.automation.core;
 
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.WebDriverCache;
+import org.browser.automation.core.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
+
+import java.util.Optional;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
@@ -64,13 +67,13 @@ public class BrowserManager {
 
     /**
      * Opens a new browser window and returns the associated {@code WebDriver} instance.
-     * If the driver is not found in the cache, an error is logged and an exception is thrown.
+     * If the driver is not found in the cache, a {@code WebDriverInitializationException} is thrown.
      *
      * @param driverName the name of the {@code WebDriver} instance.
      * @return the {@code WebDriver} instance associated with the new window.
-     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
-    public WebDriver openNewWindow(String driverName) {
+    public WebDriver openNewWindow(String driverName) throws WebDriverInitializationException {
         return handleBrowserOperation(driverName, "window");
     }
 
@@ -81,13 +84,10 @@ public class BrowserManager {
      * @param driverName    the name of the {@code WebDriver} instance.
      * @param openNewWindow if true, opens a new window; otherwise, opens a new tab.
      * @return the {@code WebDriver} instance associated with the operation.
-     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
-    public WebDriver openNewTab(String driverName, boolean openNewWindow) {
-        if (openNewWindow) {
-            return openNewWindow(driverName);
-        }
-        return handleBrowserOperation(driverName, "tab");
+    public WebDriver openNewTab(String driverName, boolean openNewWindow) throws WebDriverInitializationException {
+        return openNewWindow ? openNewWindow(driverName) : handleBrowserOperation(driverName, "tab");
     }
 
     /**
@@ -95,9 +95,9 @@ public class BrowserManager {
      *
      * @param driverName the name of the {@code WebDriver} instance.
      * @return the {@code WebDriver} instance associated with the new tab.
-     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
-    public WebDriver openNewTab(String driverName) {
+    public WebDriver openNewTab(String driverName) throws WebDriverInitializationException {
         return openNewTab(driverName, false);
     }
 
@@ -120,15 +120,14 @@ public class BrowserManager {
      * @param driverName    the name of the {@code WebDriver} instance.
      * @param operationType the type of operation being performed (e.g., "window" or "tab").
      * @return the {@code WebDriver} instance associated with the operation.
-     * @throws IllegalStateException if the {@code WebDriver} instance could not be created or retrieved.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
-    private WebDriver handleBrowserOperation(String driverName, String operationType) {
-        log.info("Performing operation '{}' for driver: {}", operationType, driverName);
-        WebDriver driver = webDriverCache.getDriver(driverName);
-        if (driver == null) {
-            log.error("Failed to create or retrieve WebDriver for: {}", driverName);
-            throw new IllegalStateException("WebDriver could not be created for: " + driverName);
-        }
-        return driver;
+    private WebDriver handleBrowserOperation(String driverName, String operationType) throws WebDriverInitializationException {
+        log.info("Performing '{}' operation for driver: {}", operationType, driverName);
+        return Optional.ofNullable(webDriverCache.getDriver(driverName))
+                .orElseThrow(() -> {
+                    log.error("Failed to create or retrieve WebDriver for: {}", driverName);
+                    return new WebDriverInitializationException(driverName);
+                });
     }
 }
