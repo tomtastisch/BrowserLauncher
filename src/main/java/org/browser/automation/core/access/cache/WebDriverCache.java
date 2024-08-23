@@ -1,21 +1,26 @@
 package org.browser.automation.core.access.cache;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.time.Duration;
-import java.util.concurrent.*;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A thread-safe cache for managing multiple WebDriver instances.
  * This cache is responsible for storing and retrieving WebDriver instances
- * based on a unique identifier (e.g., session ID or driver name).
+ * based on a unique identifier, specifically the session ID.
  *
  * <p>It also supports automatic cleanup of inactive WebDriver instances
  * after a configurable timeout period.</p>
@@ -26,8 +31,8 @@ import java.util.concurrent.*;
  * Example usage:
  * <pre>
  * WebDriverCache cache = WebDriverCache.getInstance();
- * cache.addDriver("chrome", someWebDriverInstance);
- * WebDriver driver = cache.getDriver("chrome");
+ * cache.addDriver(someWebDriverInstance);
+ * WebDriver driver = cache.getDriverBySessionId(someSessionId);
  * </pre>
  */
 @Slf4j
@@ -35,8 +40,8 @@ import java.util.concurrent.*;
 public class WebDriverCache {
 
     /**
-     * A thread-safe map for storing WebDriver instances. The keys represent unique identifiers
-     * (e.g., browser names), and the values are WebDriver instances.
+     * A thread-safe map for storing WebDriver instances. The keys represent unique session IDs,
+     * and the values are WebDriver instances.
      */
     @JsonIgnore
     private final ConcurrentMap<String, WebDriver> driverCache = new ConcurrentHashMap<>();
@@ -57,13 +62,6 @@ public class WebDriverCache {
      * Determines if automatic cleanup is enabled.
      */
     private final boolean autoCleanupEnabled;
-
-    /**
-     * The Jackson ObjectMapper used for JSON serialization and deserialization of the cache.
-     * This is ignored in serialization processes to avoid circular dependencies.
-     */
-    @JsonIgnore
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Inner static class responsible for holding the Singleton instance of {@code WebDriverCache}.
@@ -105,34 +103,35 @@ public class WebDriverCache {
     }
 
     /**
-     * Adds a WebDriver instance to the cache with a given key.
-     * If a WebDriver instance with the same key already exists, it is replaced.
+     * Adds a WebDriver instance to the cache, using its session ID as the key.
+     * If the WebDriver instance does not have a session ID, a UUID is generated as a fallback.
+     * If a WebDriver instance with the same session ID already exists, it is replaced.
      *
-     * @param key    the unique identifier for the WebDriver instance
      * @param driver the WebDriver instance to cache
      */
-    public void addDriver(@NotNull String key, @NotNull WebDriver driver) {
-        driverCache.put(key, driver);
+    public void addDriver(@NonNull WebDriver driver) {
+        String sessionId = getSessionId(driver);
+        driverCache.put(sessionId, driver);
     }
 
     /**
-     * Retrieves a WebDriver instance from the cache based on the given key.
+     * Retrieves a WebDriver instance from the cache based on the given session ID.
      *
-     * @param key the unique identifier for the WebDriver instance
+     * @param sessionId the session ID of the WebDriver instance
      * @return the cached WebDriver instance, or {@code null} if not found
      */
-    public WebDriver getDriver(@NotNull String key) {
-        return driverCache.get(key);
+    public WebDriver getDriverBySessionId(@NonNull String sessionId) {
+        return driverCache.get(sessionId);
     }
 
     /**
-     * Removes a WebDriver instance from the cache based on the given key.
+     * Removes a WebDriver instance from the cache based on the given session ID.
      * If a WebDriver is found and removed, its {@code quit()} method is called to clean up resources.
      *
-     * @param key the unique identifier for the WebDriver instance
+     * @param sessionId the session ID of the WebDriver instance
      */
-    public void removeDriver(@NotNull String key) {
-        WebDriver driver = driverCache.remove(key);
+    public void removeDriver(@NonNull String sessionId) {
+        WebDriver driver = driverCache.remove(sessionId);
         if (driver != null) {
             driver.quit();
         }
@@ -146,7 +145,7 @@ public class WebDriverCache {
     private void startAutoCleanup() {
         scheduler.scheduleAtFixedRate(() -> {
             log.info("Running automatic cache cleanup...");
-            driverCache.forEach((key, driver) -> {
+            driverCache.forEach((sessionId, driver) -> {
                 // Placeholder for more advanced inactivity tracking and cleanup logic
                 log.info("Checking for inactive drivers...");
                 // Implement actual inactivity tracking logic here
@@ -161,5 +160,20 @@ public class WebDriverCache {
         if (!scheduler.isShutdown()) {
             scheduler.shutdown();
         }
+    }
+
+    /**
+     * Retrieves the session ID of a WebDriver instance. If the WebDriver is a RemoteWebDriver,
+     * the session ID is directly retrieved. Otherwise, a UUID is generated as a fallback.
+     *
+     * @param driver the WebDriver instance
+     * @return the session ID as a String
+     */
+    private String getSessionId(WebDriver driver) {
+        return Optional.ofNullable(driver)
+                .filter(d -> d instanceof RemoteWebDriver)
+                .map(d -> ((RemoteWebDriver) d).getSessionId())
+                .map(Object::toString)
+                .orElse(UUID.randomUUID().toString());
     }
 }

@@ -7,6 +7,7 @@ import com.typesafe.config.ConfigException;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 import org.browser.automation.core.exception.PackageNotFoundException;
 import org.browser.automation.core.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
@@ -15,15 +16,18 @@ import org.openqa.selenium.WebDriver;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * The {@code Browser} class is responsible for managing browser configuration and retrieving
+ * The {@code BrowserDetector} class is responsible for managing browser configuration and retrieving
  * the necessary WebDriver information based on the current operating system.
  *
  * <p>This class dynamically identifies the browser configurations from the application configuration
@@ -39,21 +43,23 @@ import java.util.Set;
  * {@code BrowserInfo} record, making it compatible with JSON formats for further processing or storage.
  */
 @Slf4j
-public class Browser {
+public class BrowserDetector {
 
-    private final ConfigurationProvider configProvider;
+    private final String osKey;
+    private final Config config;
 
-    public Browser() {
+    public BrowserDetector() {
         this(new ConfigurationProvider());
     }
 
     /**
-     * Constructs the {@code Browser} instance with the given configuration provider.
+     * Constructs the {@code BrowserDetector} instance with the given configuration provider.
      *
      * @param configProvider the configuration provider that supplies the application configuration
      */
-    public Browser(ConfigurationProvider configProvider) {
-        this.configProvider = configProvider;
+    public BrowserDetector(ConfigurationProvider configProvider) {
+        this.osKey = OSUtils.getOSKey();
+        this.config = configProvider.getConfig();
     }
 
     /**
@@ -81,36 +87,95 @@ public class Browser {
     }
 
     /**
-     * Retrieves the default browser information based on the current operating system.
-     * The method reads browser configurations from the application configuration and
-     * determines the most appropriate browser based on the available settings and the OS.
+     * Retrieves the system's default browser information without a fallback option.
+     * This method attempts to determine the default browser configured on the operating system
+     * and returns its corresponding {@code BrowserInfo} wrapped in an {@code Optional}.
+     * If the default browser cannot be determined, no fallback is provided, and the method
+     * returns an empty {@code Optional}.
      *
-     * <p>The method filters browser configurations based on the existence of the browser executable,
-     * then attempts to resolve the WebDriver class dynamically. If a valid configuration is found,
-     * it returns an {@code Optional} containing the corresponding {@code BrowserInfo}.</p>
+     * <p>This method internally delegates to {@link #getDefaultBrowserInfo(boolean)} with
+     * the {@code fallbackBrowser} parameter set to {@code false}, meaning no fallback
+     * browser is used if the default browser cannot be identified.</p>
      *
-     * @return An {@code Optional} containing the {@code BrowserInfo} if a matching browser configuration is found,
-     * or an empty {@code Optional} if no suitable configuration is detected.
-     * @throws ConfigException.Missing If the configuration for the detected OS is missing.
+     * @return An {@code Optional<BrowserInfo>} containing the default browser information,
+     *         or an empty {@code Optional} if no match is found and no fallback is used.
      */
     public Optional<BrowserInfo> getDefaultBrowserInfo() {
-        String osKey = OSUtils.getOSKey(); // Get the OS key using the utility class
-        Config config = configProvider.getConfig();
+        return getDefaultBrowserInfo(false);
+    }
+
+    /**
+     * Retrieves the system's default browser information with an optional fallback.
+     * This method attempts to determine the default browser configured on the operating system
+     * and returns the corresponding {@code BrowserInfo} wrapped in an {@code Optional}.
+     * If the default browser cannot be determined, the method can optionally fall back to
+     * returning the first available browser from the list of installed browsers.
+     *
+     * <p>The method follows these steps:</p>
+     * <ol>
+     *   <li>It fetches a list of all installed browsers on the system using {@code getInstalledBrowsers()}.</li>
+     *   <li>If the {@code fallbackBrowser} parameter is set to {@code true}, the method initializes
+     *       the result with the first available browser as a fallback option. Otherwise, it starts with an empty {@code Optional}.</li>
+     *   <li>The method executes a system command (retrieved from {@code OSUtils.getDefaultBrowserCommand()})
+     *       to determine the name of the default browser. The output of this command is captured as a UTF-8 string.</li>
+     *   <li>If the command executes successfully (exit code 0), the output is processed line by line. Each line
+     *       is trimmed to remove extra spaces, and the method checks if any of these lines match the name of an installed browser.
+     *       The matching is done using a case-insensitive comparison.</li>
+     *   <li>If multiple matches are found, the method returns the last match, as determined by the reduction operation.</li>
+     *   <li>If any exception occurs (e.g., {@code IOException}, {@code InterruptedException}, or {@code NullPointerException}),
+     *       an error is logged, and the method continues with the fallback logic.</li>
+     *   <li>The method ultimately returns either the matching browser or the first available browser, depending on
+     *       whether the fallback option was enabled and whether a match was found.</li>
+     * </ol>
+     *
+     * @param fallbackBrowser A boolean flag indicating whether to fall back to the first available browser
+     *                        if the default browser cannot be determined.
+     * @return An {@code Optional<BrowserInfo>} containing the default browser information, or the first
+     *         available browser if no match is found and the fallback is enabled. Otherwise, an empty {@code Optional}.
+     */
+    public Optional<BrowserInfo> getDefaultBrowserInfo(boolean fallbackBrowser) {
+
+        List<BrowserInfo> browsers = this.getInstalledBrowsers();
+        Optional<BrowserInfo> browser = fallbackBrowser ? browsers.stream().findFirst() : Optional.empty();
 
         try {
-            // Retrieve the list of browser configurations for the detected OS
-            List<? extends Config> browserConfigs = config.getConfigList("osBrowserPaths." + osKey);
+            Process process = Runtime.getRuntime().exec(OSUtils.getDefaultBrowserCommand());
+            String output = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
 
-            return browserConfigs.stream()
-                    .filter(browser -> Files.exists(Paths.get(browser.getString("path"))))
-                    .flatMap(browser -> getBrowserInfo(browser).stream()) // Directly flatten Optional<BrowserInfo>
-                    .findFirst();
-        } catch (ConfigException.Missing e) {
-            log.error("Configuration for OS {} is missing.", osKey, e);
+            if (process.waitFor() == 0) {
+                browser = output.lines().map(String::trim)
+                        .flatMap(line -> browsers.stream().filter(b -> line.equalsIgnoreCase(b.name)))
+                        .reduce((first, second) -> second);
+            }
+        } catch (IOException | InterruptedException | NullPointerException e) {
+            log.error("Error while executing OS {} command.", OSUtils.getDefaultBrowserCommand(), e);
         }
 
         // Return an empty Optional if no matching browser configuration is found
-        return Optional.empty();
+        return browser;
+    }
+
+    /**
+     * Retrieves a list of all installed browsers based on the current operating system.
+     *
+     * <p>This method reads browser configurations from the application configuration and
+     * determines which browsers are installed by checking the existence of the executable paths.
+     * It returns a list of {@code BrowserInfo} objects for each detected browser.</p>
+     *
+     * @return A list of {@code BrowserInfo} objects representing installed browsers.
+     * If no browsers are detected or if the configuration is missing, an empty list is returned.
+     */
+    public List<BrowserInfo> getInstalledBrowsers() {
+        try {
+            return config.getConfigList("osBrowserPaths." + osKey).stream()
+                    .filter(browser -> Files.exists(Paths.get(browser.getString("path"))))
+                    .map(BrowserDetector::getBrowserInfo)
+                    .flatMap(Optional::stream)
+                    .collect(Collectors.toList());
+        } catch (ConfigException.Missing e) {
+            log.error("Configuration for OS {} is missing.", osKey, e);
+            return List.of();
+        }
     }
 
     /**
@@ -124,8 +189,7 @@ public class Browser {
      * @param browser The {@code Config} object representing the browser configuration.
      * @return An {@code Optional} containing the {@code BrowserInfo} if the WebDriver class can be resolved.
      */
-    @SneakyThrows
-    private Optional<BrowserInfo> getBrowserInfo(Config browser) {
+    static Optional<BrowserInfo> getBrowserInfo(Config browser) {
         String path = browser.getString("path");
         String driverClassName = browser.getString("driverClass");
         Class<? extends WebDriver> driverClass = getDriverClass(driverClassName);
@@ -177,9 +241,9 @@ public class Browser {
      *
      * @param driverClass the {@code Class} of the WebDriver to instantiate
      * @return an instance of the specified WebDriver
-     * @throws ReflectiveOperationException if there is an error during instantiation (e.g., missing default constructor)
      */
-    protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass) throws ReflectiveOperationException {
+    @SneakyThrows
+    protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass) {
         return driverClass.getDeclaredConstructor().newInstance();
     }
 }
