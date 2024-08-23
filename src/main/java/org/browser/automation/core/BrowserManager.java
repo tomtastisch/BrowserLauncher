@@ -1,12 +1,9 @@
 package org.browser.automation.core;
 
-import com.typesafe.config.Config;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.core.exception.WebDriverInitializationException;
-import org.browser.automation.utils.OSUtils;
-import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 import org.openqa.selenium.remote.RemoteWebDriver;

@@ -88,7 +88,6 @@ public class BrowserDetector {
 
     /**
      * Retrieves the system's default browser information without a fallback option.
-     *
      * This method attempts to determine the default browser configured on the operating system
      * and returns its corresponding {@code BrowserInfo} wrapped in an {@code Optional}.
      * If the default browser cannot be determined, no fallback is provided, and the method
@@ -107,7 +106,6 @@ public class BrowserDetector {
 
     /**
      * Retrieves the system's default browser information with an optional fallback.
-     *
      * This method attempts to determine the default browser configured on the operating system
      * and returns the corresponding {@code BrowserInfo} wrapped in an {@code Optional}.
      * If the default browser cannot be determined, the method can optionally fall back to
