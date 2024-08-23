@@ -201,12 +201,11 @@ public class BrowserManager {
     /**
      * Creates a new {@code WebDriver} instance based on the provided browser name.
      *
-     * <p>This method dynamically identifies the appropriate {@code WebDriver} class
-     * based on the browser configuration retrieved from the {@code BrowserDetector}.
-     * It leverages a stream to filter through the list of installed browsers and finds
-     * the one that matches the specified {@code driverName}. If a match is found, the
-     * corresponding {@code WebDriver} class is instantiated using reflection, with exception
-     * handling performed using Lombok's {@code @SneakyThrows} annotation.</p>
+     * <p>This method retrieves the appropriate {@code WebDriver} class by dynamically identifying
+     * the browser configuration from the list of installed browsers provided by the {@code BrowserDetector}.
+     * The method uses a stream to filter through the list of available browsers and matches the one
+     * that corresponds to the specified {@code driverName}. If a match is found, the associated {@code WebDriver}
+     * class is instantiated using reflection, with exception handling handled by Lombok's {@code @SneakyThrows} annotation.</p>
      *
      * <p>If no browser matches the provided {@code driverName}, the method throws a
      * {@code WebDriverInitializationException} indicating that the specified browser is either
@@ -216,8 +215,8 @@ public class BrowserManager {
      * <ul>
      *     <li>Using the {@code BrowserDetector} to retrieve a list of installed browsers.</li>
      *     <li>Filtering the list to find a browser that matches the given {@code driverName}, ignoring case.</li>
-     *     <li>Instantiating the appropriate {@code WebDriver} class using reflection.</li>
-     *     <li>Handling errors gracefully using the {@code @SneakyThrows} annotation to avoid explicit try-catch blocks.</li>
+     *     <li>Instantiating the corresponding {@code WebDriver} class using the {@code BrowserDetector}.</li>
+     *     <li>Handling reflection-related exceptions using the {@code @SneakyThrows} annotation to avoid explicit try-catch blocks.</li>
      * </ul>
      *
      * @param driverName the name of the browser (e.g., "chrome", "firefox", "edge").
@@ -229,28 +228,8 @@ public class BrowserManager {
         return browserDetector.getInstalledBrowsers().stream()
                 .filter(browser -> browser.name().equalsIgnoreCase(driverName))
                 .findFirst()
-                .map(this::instantiateDriverSneaky)
+                .map(browser -> browserDetector.instantiateDriver(browser.driverClass()))
                 .orElseThrow(() -> new WebDriverInitializationException("Unsupported or unavailable browser: " + driverName));
-    }
-
-    /**
-     * Instantiates the {@code WebDriver} for the provided {@code BrowserInfo} using reflection.
-     *
-     * <p>This method is used to dynamically create an instance of the appropriate
-     * {@code WebDriver} class based on the configuration found in the {@code BrowserInfo}.
-     * The method is annotated with Lombok's {@code @SneakyThrows}, which automatically
-     * handles any {@code ReflectiveOperationException} that may occur during the instantiation
-     * process. This allows the method to remain concise without requiring explicit try-catch blocks.</p>
-     *
-     * <p>The method is called within the stream processing pipeline of {@code createWebDriver}
-     * and directly maps the {@code BrowserInfo} to a new {@code WebDriver} instance.</p>
-     *
-     * @param browserInfo the {@code BrowserInfo} containing the relevant configuration for the browser.
-     * @return a new instance of the appropriate {@code WebDriver} for the specified browser.
-     */
-    @SneakyThrows
-    private WebDriver instantiateDriverSneaky(BrowserDetector.BrowserInfo browserInfo) {
-        return browserDetector.instantiateDriver(browserInfo.driverClass());
     }
 
     /**

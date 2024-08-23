@@ -189,7 +189,6 @@ public class BrowserDetector {
      * @param browser The {@code Config} object representing the browser configuration.
      * @return An {@code Optional} containing the {@code BrowserInfo} if the WebDriver class can be resolved.
      */
-    @SneakyThrows
     static Optional<BrowserInfo> getBrowserInfo(Config browser) {
         String path = browser.getString("path");
         String driverClassName = browser.getString("driverClass");
@@ -242,9 +241,9 @@ public class BrowserDetector {
      *
      * @param driverClass the {@code Class} of the WebDriver to instantiate
      * @return an instance of the specified WebDriver
-     * @throws ReflectiveOperationException if there is an error during instantiation (e.g., missing default constructor)
      */
-    protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass) throws ReflectiveOperationException {
+    @SneakyThrows
+    protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass) {
         return driverClass.getDeclaredConstructor().newInstance();
     }
 }
