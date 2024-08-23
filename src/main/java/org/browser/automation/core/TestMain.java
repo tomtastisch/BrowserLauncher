@@ -6,6 +6,6 @@ public class TestMain {
         BrowserDetector bd = new BrowserDetector();
         System.out.println(bd.getDefaultBrowserInfo());
         System.out.println("----------");
-        //bd.getInstalledBrowsers().forEach(System.out::println);
+        bd.getInstalledBrowsers().forEach(System.out::println);
     }
 }
