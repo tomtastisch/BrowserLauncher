@@ -88,7 +88,7 @@
             <version>${reflections.version}</version>
         </dependency>
 
-        <!-- Selenium WebDriver for Browser Automation -->
+        <!-- Selenium WebDriver for BrowserDetector Automation -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
@@ -147,6 +147,12 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
         </dependency>
 
         <!-- Groovy and Spock for Testing -->
