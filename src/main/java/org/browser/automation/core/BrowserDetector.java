@@ -16,7 +16,6 @@ import org.openqa.selenium.WebDriver;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -94,11 +93,11 @@ public class BrowserDetector {
      * returns an empty {@code Optional}.
      *
      * <p>This method internally delegates to {@link #getDefaultBrowserInfo(boolean)} with
-     * the {@code fallbackBrowser} parameter set to {@code false}, meaning no fallback
+     * the {@code useFallbackBrowser} parameter set to {@code false}, meaning no fallback
      * browser is used if the default browser cannot be identified.</p>
      *
      * @return An {@code Optional<BrowserInfo>} containing the default browser information,
-     *         or an empty {@code Optional} if no match is found and no fallback is used.
+     * or an empty {@code Optional} if no match is found and no fallback is used.
      */
     public Optional<BrowserInfo> getDefaultBrowserInfo() {
         return getDefaultBrowserInfo(false);
@@ -111,48 +110,29 @@ public class BrowserDetector {
      * If the default browser cannot be determined, the method can optionally fall back to
      * returning the first available browser from the list of installed browsers.
      *
-     * <p>The method follows these steps:</p>
-     * <ol>
-     *   <li>It fetches a list of all installed browsers on the system using {@code getInstalledBrowsers()}.</li>
-     *   <li>If the {@code fallbackBrowser} parameter is set to {@code true}, the method initializes
-     *       the result with the first available browser as a fallback option. Otherwise, it starts with an empty {@code Optional}.</li>
-     *   <li>The method executes a system command (retrieved from {@code OSUtils.getDefaultBrowserCommand()})
-     *       to determine the name of the default browser. The output of this command is captured as a UTF-8 string.</li>
-     *   <li>If the command executes successfully (exit code 0), the output is processed line by line. Each line
-     *       is trimmed to remove extra spaces, and the method checks if any of these lines match the name of an installed browser.
-     *       The matching is done using a case-insensitive comparison.</li>
-     *   <li>If multiple matches are found, the method returns the last match, as determined by the reduction operation.</li>
-     *   <li>If any exception occurs (e.g., {@code IOException}, {@code InterruptedException}, or {@code NullPointerException}),
-     *       an error is logged, and the method continues with the fallback logic.</li>
-     *   <li>The method ultimately returns either the matching browser or the first available browser, depending on
-     *       whether the fallback option was enabled and whether a match was found.</li>
-     * </ol>
-     *
-     * @param fallbackBrowser A boolean flag indicating whether to fall back to the first available browser
-     *                        if the default browser cannot be determined.
+     * @param useFallbackBrowser A boolean flag indicating whether to fall back to the first available browser
+     *                           if the default browser cannot be determined.
      * @return An {@code Optional<BrowserInfo>} containing the default browser information, or the first
-     *         available browser if no match is found and the fallback is enabled. Otherwise, an empty {@code Optional}.
+     * available browser if no match is found and the fallback is enabled. Otherwise, an empty {@code Optional}.
      */
-    public Optional<BrowserInfo> getDefaultBrowserInfo(boolean fallbackBrowser) {
-
-        List<BrowserInfo> browsers = this.getInstalledBrowsers();
-        Optional<BrowserInfo> browser = fallbackBrowser ? browsers.stream().findFirst() : Optional.empty();
+    public Optional<BrowserInfo> getDefaultBrowserInfo(boolean useFallbackBrowser) {
+        List<BrowserInfo> installed = this.getInstalledBrowsers();
+        Optional<BrowserInfo> result = useFallbackBrowser ? installed.stream().findFirst() : Optional.empty();
 
         try {
-            Process process = Runtime.getRuntime().exec(OSUtils.getDefaultBrowserCommand());
-            String output = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
-
-            if (process.waitFor() == 0) {
-                browser = output.lines().map(String::trim)
-                        .flatMap(line -> browsers.stream().filter(b -> line.equalsIgnoreCase(b.name)))
-                        .reduce((first, second) -> second);
+            Process proc = Runtime.getRuntime().exec(OSUtils.getDefaultBrowserCommand());
+            if (proc.waitFor() == 0) {
+                String output = IOUtils.toString(proc.getInputStream(), StandardCharsets.UTF_8);
+                result = output.lines()
+                        .map(String::trim)
+                        .flatMap(line -> installed.stream().filter(b -> line.equalsIgnoreCase(b.name)))
+                        .reduce((a, b) -> b); // Returns the last match if there are multiple
             }
-        } catch (IOException | InterruptedException | NullPointerException e) {
-            log.error("Error while executing OS {} command.", OSUtils.getDefaultBrowserCommand(), e);
+        } catch (Exception e) {
+            log.error("Error while executing OS command: {}", OSUtils.getDefaultBrowserCommand(), e);
         }
 
-        // Return an empty Optional if no matching browser configuration is found
-        return browser;
+        return result;
     }
 
     /**
