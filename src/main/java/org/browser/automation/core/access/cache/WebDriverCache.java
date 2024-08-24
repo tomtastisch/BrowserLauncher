@@ -18,30 +18,36 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A thread-safe cache for managing multiple WebDriver instances.
- * This cache is responsible for storing and retrieving WebDriver instances
+ * A thread-safe cache for managing multiple {@link WebDriver} instances.
+ * This cache is responsible for storing and retrieving {@code WebDriver} instances
  * based on a unique identifier, specifically the session ID.
  *
- * <p>It also supports automatic cleanup of inactive WebDriver instances
- * after a configurable timeout period.</p>
+ * <p>Key features include:
+ * <ul>
+ *     <li>Thread-safe storage of {@link WebDriver} instances using a {@link ConcurrentMap}.</li>
+ *     <li>Automatic cleanup of inactive {@link WebDriver} instances based on a configurable timeout.</li>
+ *     <li>Support for retrieving, adding, and removing {@link WebDriver} instances based on their session IDs.</li>
+ *     <li>Flexibility in enabling or disabling automatic cleanup based on the application's needs.</li>
+ * </ul>
  *
- * <p>The cache does not handle the creation of WebDriver instances;
+ * <p>The cache does not handle the creation of {@link WebDriver} instances;
  * they must be provided externally and are managed by this class.</p>
- * <p>
- * Example usage:
+ *
+ * <p>Usage example:
  * <pre>
  * WebDriverCache cache = WebDriverCache.getInstance();
  * cache.addDriver(someWebDriverInstance);
  * WebDriver driver = cache.getDriverBySessionId(someSessionId);
  * </pre>
+ * </p>
  */
 @Slf4j
 @Getter
 public class WebDriverCache {
 
     /**
-     * A thread-safe map for storing WebDriver instances. The keys represent unique session IDs,
-     * and the values are WebDriver instances.
+     * A thread-safe map for storing {@link WebDriver} instances. The keys represent unique session IDs,
+     * and the values are {@link WebDriver} instances.
      */
     @JsonIgnore
     private final ConcurrentMap<String, WebDriver> driverCache = new ConcurrentHashMap<>();
@@ -53,7 +59,7 @@ public class WebDriverCache {
     private final ScheduledExecutorService scheduler;
 
     /**
-     * The time duration after which inactive WebDriver instances are eligible for cleanup.
+     * The time duration after which inactive {@link WebDriver} instances are eligible for cleanup.
      */
     @JsonIgnore
     private final Duration inactivityTimeout;
@@ -64,7 +70,7 @@ public class WebDriverCache {
     private final boolean autoCleanupEnabled;
 
     /**
-     * Inner static class responsible for holding the Singleton instance of {@code WebDriverCache}.
+     * Inner static class responsible for holding the singleton instance of {@code WebDriverCache}.
      * The instance is lazily loaded when the class is first accessed.
      */
     private static class SingletonHelper {
@@ -77,18 +83,18 @@ public class WebDriverCache {
     /**
      * Returns the singleton instance of {@code WebDriverCache}.
      *
-     * @return the singleton instance of {@code WebDriverCache}
+     * @return the singleton instance of {@code WebDriverCache}.
      */
     public static WebDriverCache getInstance() {
         return SingletonHelper.INSTANCE;
     }
 
     /**
-     * Private constructor for {@code WebDriverCache}. This is initialized via the builder.
+     * Private constructor for {@code WebDriverCache}. This is initialized via the builder pattern.
      * The constructor is marked private to enforce the singleton pattern.
      *
-     * @param autoCleanupEnabled whether automatic cleanup is enabled
-     * @param inactivityTimeout  the duration after which inactive WebDriver instances are removed
+     * @param autoCleanupEnabled whether automatic cleanup is enabled.
+     * @param inactivityTimeout  the duration after which inactive {@link WebDriver} instances are removed.
      */
     @Builder
     private WebDriverCache(boolean autoCleanupEnabled, @NonNull Duration inactivityTimeout) {
@@ -103,11 +109,11 @@ public class WebDriverCache {
     }
 
     /**
-     * Adds a WebDriver instance to the cache, using its session ID as the key.
-     * If the WebDriver instance does not have a session ID, a UUID is generated as a fallback.
-     * If a WebDriver instance with the same session ID already exists, it is replaced.
+     * Adds a {@link WebDriver} instance to the cache, using its session ID as the key.
+     * If the {@link WebDriver} instance does not have a session ID, a UUID is generated as a fallback.
+     * If a {@link WebDriver} instance with the same session ID already exists, it is replaced.
      *
-     * @param driver the WebDriver instance to cache
+     * @param driver the {@link WebDriver} instance to cache.
      */
     public void addDriver(@NonNull WebDriver driver) {
         String sessionId = getSessionId(driver);
@@ -115,32 +121,48 @@ public class WebDriverCache {
     }
 
     /**
-     * Retrieves a WebDriver instance from the cache based on the given session ID.
+     * Retrieves a {@link WebDriver} instance from the cache based on the given session ID.
      *
-     * @param sessionId the session ID of the WebDriver instance
-     * @return the cached WebDriver instance, or {@code null} if not found
+     * @param sessionId the session ID of the {@link WebDriver} instance.
+     * @return the cached {@link WebDriver} instance, or {@code null} if not found.
      */
     public WebDriver getDriverBySessionId(@NonNull String sessionId) {
         return driverCache.get(sessionId);
     }
 
     /**
-     * Removes a WebDriver instance from the cache based on the given session ID.
-     * If a WebDriver is found and removed, its {@code quit()} method is called to clean up resources.
+     * Removes a {@link WebDriver} instance from the cache and quits the instance.
+     * This overload is provided to remove a {@link WebDriver} instance directly.
      *
-     * @param sessionId the session ID of the WebDriver instance
+     * @param driver the {@link WebDriver} instance to remove and quit.
+     * @return the session ID of the removed {@link WebDriver} instance.
      */
-    public void removeDriver(@NonNull String sessionId) {
+    public String removeDriver(@NonNull WebDriver driver) {
+        return removeDriver(getSessionId(driver));
+    }
+
+    /**
+     * Removes a {@link WebDriver} instance from the cache based on the given session ID.
+     * If a {@link WebDriver} is found and removed, its {@code quit()} method is called to clean up resources.
+     *
+     * @param sessionId the session ID of the {@link WebDriver} instance.
+     * @return the session ID of the removed {@link WebDriver} instance.
+     */
+    public String removeDriver(@NonNull String sessionId) {
         WebDriver driver = driverCache.remove(sessionId);
         if (driver != null) {
             driver.quit();
         }
+        return sessionId;
     }
 
     /**
      * Starts the automatic cleanup process for the cache. The cleanup runs at the specified
-     * inactivity interval and removes WebDriver instances that have been inactive.
+     * inactivity interval and removes {@link WebDriver} instances that have been inactive.
      * This method schedules the cleanup task to run periodically.
+     *
+     * <p>This method is a placeholder for a more advanced cleanup logic based on inactivity tracking,
+     * which can be implemented based on custom requirements.</p>
      */
     private void startAutoCleanup() {
         scheduler.scheduleAtFixedRate(() -> {
@@ -155,6 +177,7 @@ public class WebDriverCache {
 
     /**
      * Shuts down the scheduler if it is running. This is particularly useful when stopping the application.
+     * It ensures that the automatic cleanup process is terminated gracefully.
      */
     public void shutdownScheduler() {
         if (!scheduler.isShutdown()) {
@@ -163,11 +186,11 @@ public class WebDriverCache {
     }
 
     /**
-     * Retrieves the session ID of a WebDriver instance. If the WebDriver is a RemoteWebDriver,
+     * Retrieves the session ID of a {@link WebDriver} instance. If the {@link WebDriver} is a {@link RemoteWebDriver},
      * the session ID is directly retrieved. Otherwise, a UUID is generated as a fallback.
      *
-     * @param driver the WebDriver instance
-     * @return the session ID as a String
+     * @param driver the {@link WebDriver} instance.
+     * @return the session ID as a {@link String}.
      */
     private String getSessionId(WebDriver driver) {
         return Optional.ofNullable(driver)

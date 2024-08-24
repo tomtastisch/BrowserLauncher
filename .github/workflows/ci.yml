@@ -1,0 +1,23 @@
+name: Groovy CI Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Install Groovy
+        run: sudo apt-get install groovy
+
+      - name: Run Groovy Tests
+        run: groovy path/to/your/tests/*.groovy

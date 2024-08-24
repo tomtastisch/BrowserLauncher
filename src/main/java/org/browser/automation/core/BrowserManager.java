@@ -2,6 +2,7 @@ package org.browser.automation.core;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.core.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
@@ -29,9 +30,8 @@ import java.util.Optional;
  * instance to be injected, which can be useful when mocking or spying during unit tests.
  */
 @Slf4j
-public class BrowserManager {
+public class BrowserManager extends AbstractWebDriverCacheManager {
 
-    private final WebDriverCache webDriverCache;
     private final BrowserDetector browserDetector; // BrowserDetector as a class-level instance
 
     /**
@@ -68,7 +68,7 @@ public class BrowserManager {
      * @param webDriverCache the {@code WebDriverCache} instance to be used.
      */
     private BrowserManager(WebDriverCache webDriverCache) {
-        this.webDriverCache = webDriverCache;
+        super(webDriverCache);
         this.browserDetector = new BrowserDetector(); // Single instance of BrowserDetector
     }
 
@@ -166,22 +166,6 @@ public class BrowserManager {
     }
 
     /**
-     * Retrieves the cached {@code WebDriver} instance associated with the given session ID.
-     * If the session ID is not found, a new driver is created.
-     *
-     * @param sessionId the session ID of the {@code WebDriver} instance.
-     * @return the cached or newly created {@code WebDriver} instance.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    public WebDriver getWebDriver(String sessionId) throws WebDriverInitializationException {
-        return Optional.ofNullable(webDriverCache.getDriverBySessionId(sessionId))
-                .orElseThrow(() -> {
-                    log.error("No WebDriver found for session ID: {}", sessionId);
-                    return new WebDriverInitializationException("No WebDriver found for session ID: " + sessionId);
-                });
-    }
-
-    /**
      * Retrieves or creates a {@code WebDriver} instance based on the provided driver name.
      * If a cached instance exists, it is returned; otherwise, a new instance is created,
      * added to the cache, and returned.
@@ -193,10 +177,9 @@ public class BrowserManager {
     private WebDriver getOrCreateDriver(String driverName) {
         WebDriver driver = createWebDriver(driverName);
         String sessionId = ((RemoteWebDriver) driver).getSessionId().toString();
-        webDriverCache.addDriver(driver); // Add the driver to the cache with the session ID as the key
+        getWebDriverCache().addDriver(driver); // Add the driver to the cache with the session ID as the key
         return driver;
     }
-
 
     /**
      * Creates a new {@code WebDriver} instance based on the provided browser name.
