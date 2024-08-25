@@ -26,7 +26,7 @@ jobs:
           brew install groovy
 
       - name: Run Groovy tests
-        run: groovy tests/groovy/*.groovy
+        run: groovy src/test/groovy/**/*.groovy
 
       - name: Run additional tests
         run: ./scripts/run_tests.sh
