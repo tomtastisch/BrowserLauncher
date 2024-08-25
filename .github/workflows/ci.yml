@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.jdk }}
-          distribution: ${{ matrix.jdk }}
+          distribution: 'temurin'  # Verwendet die Temurin-Distribution für Java 17
 
       - name: Install Homebrew dependencies
         run: |
@@ -25,7 +25,7 @@ jobs:
           brew install defaultbrowser  # Beispiel für macOS-spezifische Abhängigkeit
 
       - name: Run Groovy tests
-               - run: groovy tests/groovy/*.groovy
+        run: groovy tests/groovy/*.groovy  # Korrekte Einrückung und Syntax
 
-      - name: Run tests
-        run: ./scripts/run_tests.sh
+      - name: Run additional tests
+        run: ./scripts/run_tests.sh  # Dieser Schritt bleibt unverändert
