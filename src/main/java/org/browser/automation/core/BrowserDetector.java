@@ -117,7 +117,7 @@ public class BrowserDetector {
      */
     public Optional<BrowserInfo> getDefaultBrowserInfo(boolean useFallbackBrowser) {
         List<BrowserInfo> installed = this.getInstalledBrowsers();
-        Optional<BrowserInfo> result = useFallbackBrowser ? installed.stream().findFirst() : Optional.empty();
+        Optional<BrowserInfo> result = Optional.empty();
 
         try {
             Process proc = Runtime.getRuntime().exec(OSUtils.getDefaultBrowserCommand());
@@ -132,7 +132,9 @@ public class BrowserDetector {
             log.error("Error while executing OS command: {}", OSUtils.getDefaultBrowserCommand(), e);
         }
 
-        return result;
+        return (result.isEmpty() && useFallbackBrowser)
+                ? installed.stream().findFirst()
+                : result;
     }
 
     /**

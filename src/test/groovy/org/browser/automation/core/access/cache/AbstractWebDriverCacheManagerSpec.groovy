@@ -54,7 +54,7 @@ class AbstractWebDriverCacheManagerSpec extends Specification {
         WebDriver driver2 = Mock(WebDriver)
         List<WebDriver> cachedDrivers = [driver1, driver2]
         mockCache.getDriverCache() >> new ConcurrentHashMap<String, WebDriver>(
-                [(UUID.randomUUID().toString()): driver1, (UUID.randomUUID().toString()): driver2]
+                [(UUID.randomUUID().toString()): driver2, (UUID.randomUUID().toString()): driver1]
         )
 
         expect: "The manager should return all cached WebDriver instances"

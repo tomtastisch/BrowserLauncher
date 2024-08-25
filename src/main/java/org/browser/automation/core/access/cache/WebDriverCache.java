@@ -86,9 +86,12 @@ public class WebDriverCache {
      */
     private static class SingletonHelper {
 
+        static boolean autoCleanupEnabled = Boolean.parseBoolean(config.getString("webdriver.cache.auto-cleanup.enabled"));
+        static long timeout = Long.parseLong(config.getString("webdriver.cache.cleanup.timeout"));
+
         private static final WebDriverCache INSTANCE = WebDriverCache.builder()
-                .autoCleanupEnabled(config.getBoolean("webdriver.cache.auto-cleanup.enabled"))
-                .inactivityTimeout(Duration.ofMillis(config.getLong("webdriver.cache.cleanup.timeout")))
+                .autoCleanupEnabled(autoCleanupEnabled)
+                .inactivityTimeout(Duration.ofMillis(timeout))
                 .build();
     }
 
