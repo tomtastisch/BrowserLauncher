@@ -24,5 +24,8 @@ jobs:
           brew update
           brew install defaultbrowser  # Beispiel für macOS-spezifische Abhängigkeit
 
+      - name: Run Groovy tests
+               - run: groovy tests/groovy/*.groovy
+
       - name: Run tests
-        run: ./scripts/run_tests.sh  # Passe dies an, um dein Testskript auszuführen
+        run: ./scripts/run_tests.sh
