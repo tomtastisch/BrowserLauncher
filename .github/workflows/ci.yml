@@ -27,7 +27,7 @@ jobs:
 
       - name: Build and compile the project
         run: |
-          mvn clean compile install
+          mvn clean compile dependency:copy-dependencies
 
       - name: Run Groovy tests
         run: |
