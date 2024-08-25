@@ -6,9 +6,9 @@ jobs:
   build:
     runs-on: macos-latest
     strategy:
-      max-parallel: 1
       matrix:
         jdk: [ 17 ]
+      max-parallel: 1
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
@@ -17,15 +17,16 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.jdk }}
-          distribution: 'temurin'  # Verwendet die Temurin-Distribution für Java 17
+          distribution: 'temurin'
 
       - name: Install Homebrew dependencies
         run: |
           brew update
-          brew install defaultbrowser  # Beispiel für macOS-spezifische Abhängigkeit
+          brew install defaultbrowser
+          brew install groovy
 
       - name: Run Groovy tests
-        run: groovy tests/groovy/*.groovy  # Korrekte Einrückung und Syntax
+        run: groovy tests/groovy/*.groovy
 
       - name: Run additional tests
-        run: ./scripts/run_tests.sh  # Dieser Schritt bleibt unverändert
+        run: ./scripts/run_tests.sh
