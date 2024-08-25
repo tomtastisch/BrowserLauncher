@@ -26,7 +26,10 @@ jobs:
           brew install groovy
 
       - name: Run Groovy tests
-        run: groovy src/test/groovy/**/*.groovy
+        run: |
+          for file in $(find src/test/groovy -name "*.groovy"); do
+            groovy $file
+          done
 
       - name: Run additional tests
         run: ./scripts/run_tests.sh
