@@ -27,14 +27,16 @@ jobs:
 
       - name: Build and compile the project
         run: |
-          # ./gradlew clean build # Für Gradle-Projekte
-          # Oder für Maven-Projekte
+          # Für Gradle-Projekte:
+          # ./gradlew clean build
+          # Für Maven-Projekte:
           mvn clean compile install
 
       - name: Run Groovy tests
         run: |
+          # Setze den Klassenpfad und führe die Groovy-Tests aus
           for file in $(find src/test/groovy -name "*.groovy"); do
-            groovy $file
+            groovy -cp target/classes:target/dependency/* $file
           done
 
       - name: Run additional tests
