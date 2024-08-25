@@ -1,6 +1,8 @@
 package org.browser.automation.core.access.cache;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
@@ -18,32 +20,41 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A thread-safe cache for managing multiple {@link WebDriver} instances.
- * This cache is responsible for storing and retrieving {@code WebDriver} instances
- * based on a unique identifier, specifically the session ID.
- *
- * <p>Key features include:
+ * A thread-safe cache for managing multiple {@link WebDriver} instances.<br>
+ * This cache is responsible for storing and retrieving {@code WebDriver} instances<br>
+ * based on a unique identifier, specifically the session ID.<br>
+ * <br>
+ * <p>Key features include:</p><br>
  * <ul>
  *     <li>Thread-safe storage of {@link WebDriver} instances using a {@link ConcurrentMap}.</li>
  *     <li>Automatic cleanup of inactive {@link WebDriver} instances based on a configurable timeout.</li>
  *     <li>Support for retrieving, adding, and removing {@link WebDriver} instances based on their session IDs.</li>
  *     <li>Flexibility in enabling or disabling automatic cleanup based on the application's needs.</li>
  * </ul>
- *
- * <p>The cache does not handle the creation of {@link WebDriver} instances;
- * they must be provided externally and are managed by this class.</p>
- *
- * <p>Usage example:
+ * <br>
+ * <p>The cache does not handle the creation of {@link WebDriver} instances;<br>
+ * they must be provided externally and are managed by this class.</p><br>
+ * <br>
+ * <p>Usage example:</p><br>
  * <pre>
  * WebDriverCache cache = WebDriverCache.getInstance();
  * cache.addDriver(someWebDriverInstance);
  * WebDriver driver = cache.getDriverBySessionId(someSessionId);
  * </pre>
- * </p>
  */
 @Slf4j
 @Getter
 public class WebDriverCache {
+
+    /**
+     * The configuration object that loads settings from the application's configuration files
+     * (e.g., `application.conf` or `reference.conf`). This uses the Typesafe Config library.
+     * The configuration includes properties like whether automatic cleanup is enabled and the
+     * inactivity timeout for cached {@link WebDriver} instances.
+     * <br>
+     * The loaded configuration is used throughout the class to determine the behavior of the cache.
+     */
+    private static final Config config = ConfigFactory.load();
 
     /**
      * A thread-safe map for storing {@link WebDriver} instances. The keys represent unique session IDs,
@@ -74,9 +85,10 @@ public class WebDriverCache {
      * The instance is lazily loaded when the class is first accessed.
      */
     private static class SingletonHelper {
+
         private static final WebDriverCache INSTANCE = WebDriverCache.builder()
-                .autoCleanupEnabled(true)
-                .inactivityTimeout(Duration.ofMinutes(10))
+                .autoCleanupEnabled(config.getBoolean("webdriver.cache.auto-cleanup.enabled"))
+                .inactivityTimeout(Duration.ofMillis(config.getLong("webdriver.cache.cleanup.timeout")))
                 .build();
     }
 
@@ -154,6 +166,22 @@ public class WebDriverCache {
             driver.quit();
         }
         return sessionId;
+    }
+
+    /**
+     * Retrieves the cleanup timeout duration from the environment variables or the application configuration.<br>
+     * The method first checks for a system environment variable named "WEBDRIVER_CACHE_CLEANUP_TIMEOUT".<br>
+     * If the environment variable is not set, it falls back to the default value defined in the configuration file.<br>
+     * <br>
+     * This allows for flexible configuration of the cache timeout in different environments, such as<br>
+     * development, testing, or production, by simply adjusting the environment variable or the config file.<br>
+     * <br>
+     * @return the timeout duration in milliseconds as a long value.
+     */
+    private long getCleanupTimeout() {
+        return Optional.ofNullable(System.getenv("WEBDRIVER_CACHE_CLEANUP_TIMEOUT"))
+                .map(Long::parseLong)
+                .orElse(config.getLong("webdriver.cache.cleanup.timeout"));
     }
 
     /**
