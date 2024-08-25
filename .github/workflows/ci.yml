@@ -25,6 +25,12 @@ jobs:
           brew install defaultbrowser
           brew install groovy
 
+      - name: Build and compile the project
+        run: |
+          # ./gradlew clean build # Für Gradle-Projekte
+          # Oder für Maven-Projekte
+          mvn clean compile install
+
       - name: Run Groovy tests
         run: |
           for file in $(find src/test/groovy -name "*.groovy"); do
