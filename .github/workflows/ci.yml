@@ -23,13 +23,13 @@ jobs:
         run: |
           brew update
           brew install defaultbrowser
-          # Weitere Homebrew-Installationen hier hinzufügen, falls benötigt
 
       - name: Build and compile the project
         run: |
           mvn clean compile dependency:copy-dependencies
-          # Falls du Gradle verwendest, statt Maven:
-          # ./gradlew clean build
+
+      - name: Set execute permissions for test script
+        run: chmod +x ./scripts/run_tests.sh
 
       - name: Run Java tests
         run: mvn test
