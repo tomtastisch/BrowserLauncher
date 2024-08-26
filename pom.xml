@@ -155,6 +155,7 @@
 
     <build>
         <plugins>
+
             <!-- Maven Resources Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -191,6 +192,15 @@
             </plugin>
 
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <mainClass>org.browser.automation.core.BrowserManager</mainClass>
+                </configuration>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.2</version>
@@ -198,12 +208,12 @@
                     <classesDirectory>${project.build.outputDirectory}</classesDirectory>
                     <testClassesDirectory>${project.build.testOutputDirectory}</testClassesDirectory>
                     <outputDirectory>${project.build.directory}</outputDirectory>
-                    <archive>
+                    <!--archive>
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <mainClass>org.browser.automation.MainClass</mainClass> <!-- Ersetze dies mit deiner Main-Class -->
+                            <mainClass>org.browser.automation.core.BrowserManager</mainClass>
                         </manifest>
-                    </archive>
+                    </archive-->
                 </configuration>
             </plugin>
         </plugins>
