@@ -193,7 +193,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>4.0.0-beta-3</version>
+                <version>3.4.2</version>
                 <configuration>
                     <classesDirectory>${project.build.outputDirectory}</classesDirectory>
                     <testClassesDirectory>${project.build.testOutputDirectory}</testClassesDirectory>
