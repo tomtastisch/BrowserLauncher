@@ -41,6 +41,10 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
         private static final BrowserManager INSTANCE = new BrowserManager(WebDriverCache.getInstance());
     }
 
+    public static void main(String[] args) {
+        System.out.println("Hello World");
+    }
+
     /**
      * Retrieves the Singleton instance of {@code BrowserManager} using the default {@code WebDriverCache}.
      *
