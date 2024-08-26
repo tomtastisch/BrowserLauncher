@@ -208,12 +208,12 @@
                     <classesDirectory>${project.build.outputDirectory}</classesDirectory>
                     <testClassesDirectory>${project.build.testOutputDirectory}</testClassesDirectory>
                     <outputDirectory>${project.build.directory}</outputDirectory>
-                    <!--archive>
+                    <archive>
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                             <mainClass>org.browser.automation.core.BrowserManager</mainClass>
                         </manifest>
-                    </archive-->
+                    </archive>
                 </configuration>
             </plugin>
         </plugins>
