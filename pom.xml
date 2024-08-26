@@ -189,6 +189,21 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
+            <!-- Maven Jar Plugin to package the application -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>4.0.0-beta-1</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <mainClass>org.browser.automation.MainClass</mainClass> <!-- Ersetze dies mit deiner Main-Class -->
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
