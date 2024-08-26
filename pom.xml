@@ -221,6 +221,10 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.browser.automation.core.BrowserManager</mainClass>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheNoticeResourceTransformer">
+                                    <resource>META-INF/NOTICE</resource>
+                                    <skip>true</skip>
+                                </transformer>
                             </transformers>
                         </configuration>
                     </execution>
