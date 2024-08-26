@@ -23,17 +23,16 @@ jobs:
         run: |
           brew update
           brew install defaultbrowser
-          brew install groovy
+          # Weitere Homebrew-Installationen hier hinzufügen, falls benötigt
 
       - name: Build and compile the project
         run: |
           mvn clean compile dependency:copy-dependencies
+          # Falls du Gradle verwendest, statt Maven:
+          # ./gradlew clean build
 
-      - name: Run Groovy tests
-        run: |
-          for file in $(find src/test/groovy -name "*.groovy"); do
-            groovy -cp target/classes:target/dependency/* $file
-          done
+      - name: Run Java tests
+        run: mvn test
 
       - name: Run additional tests
         run: ./scripts/run_tests.sh
