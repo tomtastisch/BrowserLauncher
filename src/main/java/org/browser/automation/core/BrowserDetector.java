@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.browser.automation.core.exception.PackageNotFoundException;
 import org.browser.automation.core.exception.WebdriverNotFoundException;
-import org.browser.automation.core.exception.base.LocalizedExceptionBase;
 import org.browser.automation.utils.OSUtils;
 import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.WebDriver;
@@ -139,7 +138,7 @@ public class BrowserDetector {
      * @param useFallbackBrowser A flag indicating whether to fall back to the first available browser
      *                           if the default browser cannot be identified.
      * @return An {@code Optional<BrowserInfo>} containing the default browser information,
-     *         or the first available browser if the fallback is enabled. If neither is found, an empty {@code Optional} is returned.
+     * or the first available browser if the fallback is enabled. If neither is found, an empty {@code Optional} is returned.
      */
     public Optional<BrowserInfo> getDefaultBrowserInfo(boolean useFallbackBrowser) {
         List<BrowserInfo> installedBrowsers = getInstalledBrowsers();
@@ -165,7 +164,7 @@ public class BrowserDetector {
      *
      * @param installedBrowsers The list of browsers detected as installed on the system.
      * @return An {@code Optional<BrowserInfo>} containing the detected default browser,
-     *         or an empty {@code Optional} if no match is found.
+     * or an empty {@code Optional} if no match is found.
      */
     private Optional<BrowserInfo> findDefaultBrowser(List<BrowserInfo> installedBrowsers) {
         try {
@@ -187,10 +186,10 @@ public class BrowserDetector {
      * it against the names of the installed browsers. The matching logic is case-insensitive. If multiple matches
      * are found, the last one is returned, ensuring the most recent match is used.</p>
      *
-     * @param output The output from the system command determining the default browser.
+     * @param output            The output from the system command determining the default browser.
      * @param installedBrowsers The list of installed browsers to compare against.
      * @return An {@code Optional<BrowserInfo>} containing the detected browser from the parsed output,
-     *         or an empty {@code Optional} if no match is found.
+     * or an empty {@code Optional} if no match is found.
      */
     private Optional<BrowserInfo> parseBrowserFromOutput(String output, List<BrowserInfo> installedBrowsers) {
         return output.lines()
@@ -318,7 +317,7 @@ public class BrowserDetector {
      * If no match is found, an exception specific to the situation is thrown.
      *
      * @param driverClassName The fully qualified name of the WebDriver class.
-     * @param packagePath The derived package path where the class is expected to be found.
+     * @param packagePath     The derived package path where the class is expected to be found.
      * @return The resolved WebDriver class.
      */
     @SneakyThrows
