@@ -3,8 +3,8 @@ set -e  # Script stops on first error
 
 echo "Running tests..."
 
-# Beispiel: Führe Tests mit Gradle oder Maven aus
-./gradlew clean test  # oder: mvn clean test
+# Verwende Maven statt Gradle
+mvn clean test  # Führe die Tests mit Maven aus
 
 # Falls du Headless-Browser-Tests hast:
 export BROWSER_OPTS="--headless"
