@@ -1,6 +1,6 @@
-package org.browser.automation.core.exception;
+package org.browser.automation.exception;
 
-import org.browser.automation.core.exception.base.LocalizedExceptionBase;
+import org.browser.automation.exception.base.LocalizedExceptionBase;
 
 /**
  * Exception thrown when a specific WebDriver class cannot be found during the dynamic resolution process.

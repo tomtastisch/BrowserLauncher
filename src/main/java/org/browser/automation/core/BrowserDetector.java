@@ -8,8 +8,8 @@ import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
-import org.browser.automation.core.exception.PackageNotFoundException;
-import org.browser.automation.core.exception.WebdriverNotFoundException;
+import org.browser.automation.exception.PackageNotFoundException;
+import org.browser.automation.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
 import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.WebDriver;
@@ -24,40 +24,36 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * The {@code WebDriverResolver} class provides a method to dynamically resolve the appropriate {@code WebDriver} class
- * based on a given class name. The method utilizes reflection to search and identify the correct class within the package
- * structure, with the results being cached for more efficient subsequent lookups.
+ * The {@code BrowserDetector} class is responsible for detecting and managing browser-related configurations
+ * and dynamically resolving WebDriver instances for automation tasks. It leverages the configuration management
+ * provided by the {@link ConfigurationProvider} class and uses reflection to scan and resolve classes based
+ * on the detected browser information.
  *
- * <p>This implementation is designed to be flexible, allowing for the resolution of {@code WebDriver} classes even if
- * they are part of a complex package structure. It also includes caching capabilities to improve performance by avoiding
- * redundant reflection scans.</p>
- *
- * <p><b>How the Method Works:</b></p>
- * <ol>
- *   <li><b>Caching:</b> The resolved {@code WebDriver} classes are stored in a static, thread-safe cache. If the class
- *   has already been resolved before, it is retrieved from the cache without performing a new scan.</li>
- *   <li><b>Package Resolution:</b> The method dynamically determines the package path by analyzing the segments of the
- *   class name. This ensures that even if the full package path isn't provided, the correct path can be derived and scanned.</li>
- *   <li><b>Reflection Scanning:</b> The Reflections library is used to scan the identified package for classes implementing
- *   {@code WebDriver}. This scan is limited to the relevant package to optimize performance.</li>
- *   <li><b>Fallback Mechanism:</b> If no exact match is found for the class name, the method attempts to retrieve the first
- *   available {@code WebDriver} class within the identified package.</li>
- * </ol>
- *
- * <p><b>Key Benefits:</b></p>
+ * <h2>Core Responsibilities:</h2>
  * <ul>
- *   <li>Improved Performance: The caching mechanism ensures that reflection scans are only performed once for each unique class name.</li>
- *   <li>Flexibility: The package path is dynamically determined, allowing for a more adaptive resolution process.</li>
- *   <li>Thread-Safe: The use of a {@code ConcurrentHashMap} ensures that the cache is safe for use in multi-threaded environments.</li>
+ *   <li>Determine the default browser based on the system configuration.</li>
+ *   <li>Manage browser configurations and resolve corresponding WebDriver instances.</li>
+ *   <li>Cache previously resolved WebDriver classes to enhance performance and avoid redundant reflection scans.</li>
  * </ul>
  *
- * <p><b>Note:</b> This method uses the {@code @SneakyThrows} annotation from Lombok to handle any checked exceptions,
- * such as {@code ClassNotFoundException} or {@code ReflectiveOperationException}, that may arise during the reflection
- * process. These exceptions are not expected to occur under normal usage.</p>
+ * <h2>Configuration Management:</h2>
+ * The class loads configurations using the {@link ConfigurationProvider} class, which provides
+ * a flexible and thread-safe way to manage multiple configurations. The primary configuration file
+ * loaded is "application.conf".
+ *
+ * <p>Browser-related configurations, such as paths to browser executables and the associated WebDriver classes,
+ * are managed within the configuration file. For more details, refer to the configuration file documentation
+ * where these settings are defined.</p>
+ *
+ * <h3>Reference to Configuration:</h3>
+ * For the complete configuration, including browser paths and WebDriver class mappings, please refer to the
+ * respective configuration file (e.g., "application.conf") located in the resources folder.
+ *
+ * <p><b>Note:</b> The configuration is dynamically loaded based on the detected operating system (Windows, macOS, Linux),
+ * and the path is constructed using {@link OSUtils#OS_KEY}.</p>
  */
 @Slf4j
 public class BrowserDetector {
-
     private final Config config;
 
     /**
@@ -66,17 +62,13 @@ public class BrowserDetector {
      */
     private static final Map<String, Class<? extends WebDriver>> cache = new ConcurrentHashMap<>();
 
-    public BrowserDetector() {
-        this(new ConfigurationProvider());
-    }
-
     /**
-     * Constructs the {@code BrowserDetector} instance with the given configuration provider.
-     *
-     * @param configProvider the configuration provider that supplies the application configuration
+     * Constructs the {@code BrowserDetector} instance with the configuration loaded from the {@code application.conf} file.
+     * The configuration is retrieved using {@link ConfigurationProvider}, ensuring that it is loaded in a thread-safe
+     * and efficient manner. This instance specifically loads the configuration associated with the detected OS key.
      */
-    public BrowserDetector(ConfigurationProvider configProvider) {
-        this.config = configProvider.getConfig();
+    public BrowserDetector() {
+        this.config = ConfigurationProvider.getInstance("application").getConfig();
     }
 
     /**
@@ -204,6 +196,9 @@ public class BrowserDetector {
      * <p>This method reads browser configurations from the application configuration and
      * determines which browsers are installed by checking the existence of the executable paths.
      * It returns a list of {@code BrowserInfo} objects for each detected browser.</p>
+     *
+     * <p>For details about how the paths and WebDriver classes are configured, please refer to the
+     * configuration file (e.g., "application.conf") in your project.</p>
      *
      * @return A list of {@code BrowserInfo} objects representing installed browsers.
      * If no browsers are detected or if the configuration is missing, an empty list is returned.

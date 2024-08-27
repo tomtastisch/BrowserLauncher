@@ -4,13 +4,12 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
-import org.browser.automation.core.exception.WebDriverInitializationException;
+import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
@@ -38,7 +37,7 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      * Singleton Helper class for lazy-loading the Singleton instance.
      */
     private static class SingletonHelper {
-        private static final BrowserManager INSTANCE = new BrowserManager(WebDriverCache.getInstance());
+        private static final BrowserManager INSTANCE = BrowserManager.getInstance(WebDriverCache.getInstance());
     }
 
     public static void main(String[] args) {

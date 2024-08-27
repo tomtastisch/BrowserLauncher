@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.annotation.CacheLock;
 import org.browser.automation.core.annotation.CacheLock.LockLevel;
 import org.browser.automation.core.annotation.ResourceKey;
-import org.browser.automation.core.exception.WebDriverInitializationException;
+import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
 
 import java.util.ArrayList;

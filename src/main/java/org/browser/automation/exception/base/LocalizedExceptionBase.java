@@ -1,4 +1,4 @@
-package org.browser.automation.core.exception.base;
+package org.browser.automation.exception.base;
 
 import java.text.MessageFormat;
 import java.util.ResourceBundle;

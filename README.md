@@ -39,16 +39,18 @@ BrowserLauncher is designed to work seamlessly across multiple platforms:
 - **macOS:** Leverages the `defaultbrowser` utility for better control (see setup steps below).
 - **Linux:** Uses the common `xdg-open` tool to handle URL opening, with the ability to specify particular browsers as needed.
 
-### 4. Flexible Configuration
-BrowserLauncher is easy to configure and extend, allowing you to adapt it to different environments or add more browser options as needed. It’s lightweight and designed with simplicity in mind, making it an ideal tool for quick scripts, automation workflows, or testing environments.
+### 4. Flexible Configuration and OS Detection
+BrowserLauncher now includes enhanced operating system detection with a utility that determines the appropriate command based on your platform. This ensures optimal compatibility across Windows, macOS, and Linux systems.
 
-## Installation and Setup
+The system-specific command is determined and stored using a static configuration, making it easier to extend and maintain the tool.
 
-### macOS Requirements
+### Installation and Setup
+
+#### macOS Requirements
 
 For macOS, there are a few prerequisites. The package manager [Homebrew](https://brew.sh/) is required to install the necessary utility for managing the default browser.
 
-#### Installing Homebrew
+##### Installing Homebrew
 
 Run the following command in your terminal if Homebrew is not already installed:
 
@@ -56,13 +58,15 @@ Run the following command in your terminal if Homebrew is not already installed:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-#### Installing `defaultbrowser`
+##### Installing `defaultbrowser`
 
 The `defaultbrowser` utility is necessary for managing the default browser settings on macOS. Install it using Homebrew:
 
 ```bash
 brew install defaultbrowser
 ```
+
+This utility allows the BrowserLauncher to interact correctly with the system's browser settings.
 
 ### Project Installation
 
@@ -105,6 +109,10 @@ java -jar BrowserLauncher.jar https://example.com --browser firefox
 1. **Automation Workflows**: Integrate BrowserLauncher into your scripts to automatically open monitoring dashboards, access web services, or trigger web-based actions.
 2. **Cross-Browser Testing**: Easily open the same URL across multiple browsers during web development to ensure consistent behavior.
 3. **Custom Browsing Experiences**: Force certain URLs to always open in specific browsers, depending on the context or requirements.
+
+### Extending the Tool
+
+BrowserLauncher is built with extensibility in mind. The new OS detection utilities allow you to easily add support for more platforms or modify commands as needed. The configuration map can be extended to include additional operating systems or custom commands.
 
 ## License
 
