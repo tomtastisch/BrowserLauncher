@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
@@ -16,6 +17,7 @@ import org.openqa.selenium.WebDriver;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -53,6 +55,8 @@ import java.util.stream.Collectors;
  * and the path is constructed using {@link OSUtils#OS_KEY}.</p>
  */
 @Slf4j
+@Getter
+@ThreadSafe
 public class BrowserDetector {
     private final Config config;
 

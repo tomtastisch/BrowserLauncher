@@ -11,6 +11,7 @@ import org.browser.automation.exception.ConfigKeyNotFoundException;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * The {@code ConfigurationProvider} class is responsible for loading and providing

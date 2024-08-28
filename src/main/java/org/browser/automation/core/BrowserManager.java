@@ -1,11 +1,15 @@
 package org.browser.automation.core;
 
+import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
+
+import javax.annotation.concurrent.ThreadSafe;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
@@ -25,6 +29,8 @@ import org.openqa.selenium.WebDriver;
  * instance to be injected, which can be useful when mocking or spying during unit tests.
  */
 @Slf4j
+@Getter(AccessLevel.PROTECTED)
+@ThreadSafe
 public class BrowserManager extends AbstractWebDriverCacheManager {
 
     private final BrowserDetector browserDetector; // BrowserDetector as a class-level instance
