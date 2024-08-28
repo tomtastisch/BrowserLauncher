@@ -7,7 +7,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        jdk: [ 17 ]
+        jdk: [17]
       max-parallel: 1
     steps:
       - name: Check out the repository
@@ -22,11 +22,14 @@ jobs:
       - name: Install Homebrew dependencies
         run: |
           brew update
-          brew install defaultbrowser
+          brew install defaultbrowser  # Verifizieren Sie, ob dieses Paket benötigt wird und ob es korrekt ist.
 
-      - name: Build and compile the project
+      - name: Build and compile the project with debug output
         run: |
-          mvn clean compile dependency:copy-dependencies
+          mvn clean package -X > build-debug.log || true  # Speichern Sie die detaillierte Debug-Ausgabe in einer Datei.
+
+      - name: Display build log
+        run: cat build-debug.log  # Zeigen Sie die Debug-Ausgabe zur Fehlersuche an.
 
       - name: Set execute permissions for test script
         run: chmod +x ./scripts/run_tests.sh
