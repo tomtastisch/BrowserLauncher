@@ -148,7 +148,6 @@ public class BrowserLauncher {
      * @param driverName    the name of the {@code WebDriver} instance to be used.
      * @param operationType the type of operation being performed (e.g., "window" or "tab").
      * @return the {@code WebDriver} instance associated with the operation.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
     private WebDriver handleBrowserOperation(String driverName, String operationType) {
         log.info("Performing '{}' operation for driver: {}", operationType, driverName);
