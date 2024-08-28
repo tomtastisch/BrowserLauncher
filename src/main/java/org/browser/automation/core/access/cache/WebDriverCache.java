@@ -7,12 +7,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.browser.automation.utils.DriverCacheUtils;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -131,7 +131,7 @@ public class WebDriverCache {
      * @param driver the {@link WebDriver} instance to cache.
      */
     public void addDriver(@NonNull WebDriver driver) {
-        String sessionId = getSessionId(driver);
+        String sessionId = DriverCacheUtils.getSessionId(driver);
         driverCache.put(sessionId, driver);
     }
 
@@ -153,7 +153,7 @@ public class WebDriverCache {
      * @return the session ID of the removed {@link WebDriver} instance.
      */
     public String removeDriver(@NonNull WebDriver driver) {
-        return removeDriver(getSessionId(driver));
+        return removeDriver(DriverCacheUtils.getSessionId(driver));
     }
 
     /**
@@ -165,7 +165,7 @@ public class WebDriverCache {
      */
     public String removeDriver(@NonNull String sessionId) {
         WebDriver driver = driverCache.remove(sessionId);
-        if (driver != null) {
+        if (Objects.nonNull(driver)) {
             driver.quit();
         }
         return sessionId;
@@ -214,20 +214,5 @@ public class WebDriverCache {
         if (!scheduler.isShutdown()) {
             scheduler.shutdown();
         }
-    }
-
-    /**
-     * Retrieves the session ID of a {@link WebDriver} instance. If the {@link WebDriver} is a {@link RemoteWebDriver},
-     * the session ID is directly retrieved. Otherwise, a UUID is generated as a fallback.
-     *
-     * @param driver the {@link WebDriver} instance.
-     * @return the session ID as a {@link String}.
-     */
-    private String getSessionId(WebDriver driver) {
-        return Optional.ofNullable(driver)
-                .filter(d -> d instanceof RemoteWebDriver)
-                .map(d -> ((RemoteWebDriver) d).getSessionId())
-                .map(Object::toString)
-                .orElse(UUID.randomUUID().toString());
     }
 }

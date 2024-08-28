@@ -192,25 +192,6 @@ public class BrowserDetector {
     }
 
     /**
-     * Parses the output of the system command to find the default browser from the list of installed browsers.
-     *
-     * <p>This method takes the raw output from the system command, processes each line, and attempts to match
-     * it against the names of the installed browsers. The matching logic is case-insensitive. If multiple matches
-     * are found, the last one is returned, ensuring the most recent match is used.</p>
-     *
-     * @param output            The output from the system command determining the default browser.
-     * @param installedBrowsers The list of installed browsers to compare against.
-     * @return An {@code Optional<BrowserInfo>} containing the detected browser from the parsed output,
-     * or an empty {@code Optional} if no match is found.
-     */
-    Optional<BrowserInfo> parseBrowserFromOutput(String output, List<BrowserInfo> installedBrowsers) {
-        return output.lines()
-                .map(String::trim)
-                .flatMap(line -> installedBrowsers.stream().filter(browser -> line.equalsIgnoreCase(browser.name)))
-                .reduce((a, b) -> b); // Returns the last match if there are multiple
-    }
-
-    /**
      * Retrieves a list of all installed browsers based on the current operating system.
      *
      * <p>This method reads browser configurations from the application configuration and
@@ -237,6 +218,25 @@ public class BrowserDetector {
     }
 
     /**
+     * Parses the output of the system command to find the default browser from the list of installed browsers.
+     *
+     * <p>This method takes the raw output from the system command, processes each line, and attempts to match
+     * it against the names of the installed browsers. The matching logic is case-insensitive. If multiple matches
+     * are found, the last one is returned, ensuring the most recent match is used.</p>
+     *
+     * @param output            The output from the system command determining the default browser.
+     * @param installedBrowsers The list of installed browsers to compare against.
+     * @return An {@code Optional<BrowserInfo>} containing the detected browser from the parsed output,
+     * or an empty {@code Optional} if no match is found.
+     */
+    private Optional<BrowserInfo> parseBrowserFromOutput(String output, List<BrowserInfo> installedBrowsers) {
+        return output.lines()
+                .map(String::trim)
+                .flatMap(line -> installedBrowsers.stream().filter(browser -> line.equalsIgnoreCase(browser.name)))
+                .reduce((a, b) -> b); // Returns the last match if there are multiple
+    }
+
+    /**
      * Resolves the {@code BrowserInfo} based on the provided browser configuration.
      * This method dynamically loads the WebDriver class specified in the configuration and
      * creates a {@code BrowserInfo} object containing the browser's name, path, and WebDriver class.
@@ -248,7 +248,7 @@ public class BrowserDetector {
      * @return An {@code Optional} containing the {@code BrowserInfo} if the WebDriver class can be resolved.
      */
     @SneakyThrows
-    static Optional<BrowserInfo> getBrowserInfo(Config browser) {
+    private static Optional<BrowserInfo> getBrowserInfo(Config browser) {
         String path = browser.getString("path");
         String driverClassName = browser.getString("driverClass");
         Class<? extends WebDriver> driverClass = getDriverClass(driverClassName);
@@ -292,7 +292,7 @@ public class BrowserDetector {
      * @param driverClassName The fully qualified name of the WebDriver class (e.g., "org.openqa.selenium.chrome.ChromeDriver").
      * @return The resolved {@link WebDriver} class associated with the specified driver class name.
      */
-    protected synchronized static Class<? extends WebDriver> getDriverClass(String driverClassName) {
+    private synchronized static Class<? extends WebDriver> getDriverClass(String driverClassName) {
         log.info("Resolving WebDriver class for: {}", driverClassName);
 
         // Retrieve the class from the cache or compute it if not present

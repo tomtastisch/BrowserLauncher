@@ -6,14 +6,10 @@ import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WindowType;
-import org.openqa.selenium.remote.RemoteWebDriver;
-
-import java.util.List;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
- * including opening new windows or tabs. It uses the {@code WebDriverCache} to centrally manage
+    < * including opening new windows or tabs. It uses the {@code WebDriverCache} to centrally manage
  * and retrieve {@code WebDriver} instances. This class follows the Singleton design pattern
  * to ensure a single instance is used throughout the application.
  *
@@ -38,10 +34,6 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      */
     private static class SingletonHelper {
         private static final BrowserManager INSTANCE = BrowserManager.getInstance(WebDriverCache.getInstance());
-    }
-
-    public static void main(String[] args) {
-        System.out.println("Hello World");
     }
 
     /**
@@ -76,110 +68,16 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
     }
 
     /**
-     * Opens a new browser window and returns the associated {@code WebDriver} instance.
-     * If the driver is not found in the cache, a {@code WebDriverInitializationException} is thrown.
-     * The driver is added to the cache using its session ID as the key.
-     *
-     * @param driverName the name of the {@code WebDriver} instance.
-     * @return the {@code WebDriver} instance associated with the new window.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    public WebDriver openNewWindow(String driverName) throws WebDriverInitializationException {
-        return handleBrowserOperation(driverName, "window");
-    }
-
-    /**
-     * Opens a new browser tab by default, without opening a new window.
-     * The driver is added to the cache using its session ID as the key.
-     *
-     * @param driverName the name of the {@code WebDriver} instance.
-     * @return the {@code WebDriver} instance associated with the new tab.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    public WebDriver openNewTab(String driverName) throws WebDriverInitializationException {
-        return openNewTab(driverName, false);
-    }
-
-    /**
-     * Opens a new browser tab or a new window based on the provided flag.
-     * If {@code openNewWindow} is true, a new window is opened; otherwise, a new tab is opened.
-     * The driver is added to the cache using its session ID as the key.
-     *
-     * @param driverName    the name of the {@code WebDriver} instance.
-     * @param openNewWindow if true, opens a new window; otherwise, opens a new tab.
-     * @return the {@code WebDriver} instance associated with the operation.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    public WebDriver openNewTab(String driverName, boolean openNewWindow) throws WebDriverInitializationException {
-        return openNewWindow ? openNewWindow(driverName) : handleBrowserOperation(driverName, "tab");
-    }
-
-    /**
-     * Opens multiple links in new tabs within an existing browser window.
-     * Each tab is opened within the same browser instance.
-     *
-     * @param driverName the name of the {@code WebDriver} instance.
-     * @param links      a list of URLs to be opened.
-     * @return the {@code WebDriver} instance used to open the tabs.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    public WebDriver openLinksInTabs(String driverName, List<String> links) throws WebDriverInitializationException {
-        WebDriver driver = getOrCreateDriver(driverName);
-        links.forEach(link -> openLinkInNewWindowOrTab(driver, link, false));
-        return driver; // Return the WebDriver instance
-    }
-
-    /**
-     * Opens multiple links, each in a new window.
-     * Each window is opened within the same browser instance.
-     *
-     * @param driverName the name of the {@code WebDriver} instance.
-     * @param links      a list of URLs to be opened.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    public void openLinksInNewWindows(String driverName, List<String> links) throws WebDriverInitializationException {
-        WebDriver driver = getOrCreateDriver(driverName);
-        links.forEach(link -> openLinkInNewWindowOrTab(driver, link, true));
-    }
-
-    /**
-     * Opens the same link in multiple browsers.
-     * Each browser instance is identified by a different session ID.
-     *
-     * @param link        the URL to be opened.
-     * @param driverNames a list of driver names representing different browsers.
-     * @throws WebDriverInitializationException if any of the {@code WebDriver} instances could not be created or retrieved.
-     */
-    public void openLinkInMultipleBrowsers(String link, List<String> driverNames) throws WebDriverInitializationException {
-        driverNames.stream().map(this::getOrCreateDriver)
-                .forEach(driver -> openLinkInNewWindowOrTab(driver, link, false));
-    }
-
-    /**
-     * Handles the opening of a link in either a new tab or a new window.
-     * The link is loaded into the specified browser instance.
-     *
-     * @param driver      the {@code WebDriver} instance to be used.
-     * @param link        the URL to be opened.
-     * @param inNewWindow if true, opens the link in a new window; otherwise, in a new tab.
-     */
-    private void openLinkInNewWindowOrTab(WebDriver driver, String link, boolean inNewWindow) {
-        driver.switchTo().newWindow(inNewWindow ? WindowType.WINDOW : WindowType.TAB);
-        driver.get(link);
-    }
-
-    /**
      * Retrieves or creates a {@code WebDriver} instance based on the provided driver name.
      * If a cached instance exists, it is returned; otherwise, a new instance is created,
      * added to the cache, and returned.
      *
-     * @param driverName the name of the {@code WebDriver} instance.
+     * @param driverName the name of the {@code WebDriver} instance to be used.
      * @return the cached or newly created {@code WebDriver} instance.
      */
     @SneakyThrows
-    private WebDriver getOrCreateDriver(String driverName) {
+    public WebDriver getOrCreateDriver(String driverName) {
         WebDriver driver = createWebDriver(driverName);
-        String sessionId = ((RemoteWebDriver) driver).getSessionId().toString();
         getWebDriverCache().addDriver(driver); // Add the driver to the cache with the session ID as the key
         return driver;
     }
@@ -191,7 +89,7 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      * the browser configuration from the list of installed browsers provided by the {@code BrowserDetector}.
      * The method uses a stream to filter through the list of available browsers and matches the one
      * that corresponds to the specified {@code driverName}. If a match is found, the associated {@code WebDriver}
-     * class is instantiated using reflection, with exception handling handled by Lombok's {@code @SneakyThrows} annotation.</p>
+     * class is instantiated using reflection, with exception handling managed by Lombok's {@code @SneakyThrows} annotation.</p>
      *
      * <p>If no browser matches the provided {@code driverName}, the method throws a
      * {@code WebDriverInitializationException} indicating that the specified browser is either
@@ -210,26 +108,11 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      * @throws WebDriverInitializationException if the specified browser is unsupported or unavailable,
      *                                          or if the {@code WebDriver} instance cannot be created.
      */
-    private WebDriver createWebDriver(String driverName) throws WebDriverInitializationException {
+    public WebDriver createWebDriver(String driverName) throws WebDriverInitializationException {
         return browserDetector.getInstalledBrowsers().stream()
                 .filter(browser -> browser.name().equalsIgnoreCase(driverName))
                 .findFirst()
                 .map(browser -> browserDetector.instantiateDriver(browser.driverClass()))
                 .orElseThrow(() -> new WebDriverInitializationException("Unsupported or unavailable browser: " + driverName));
-    }
-
-    /**
-     * Handles the common logic for browser operations (like opening new windows or tabs).
-     * Logs the operation being performed and retrieves the corresponding {@code WebDriver} instance
-     * from the cache. If the driver is not found, an exception is thrown.
-     *
-     * @param driverName    the name of the {@code WebDriver} instance.
-     * @param operationType the type of operation being performed (e.g., "window" or "tab").
-     * @return the {@code WebDriver} instance associated with the operation.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
-     */
-    private WebDriver handleBrowserOperation(String driverName, String operationType) throws WebDriverInitializationException {
-        log.info("Performing '{}' operation for driver: {}", operationType, driverName);
-        return getOrCreateDriver(driverName);
     }
 }
