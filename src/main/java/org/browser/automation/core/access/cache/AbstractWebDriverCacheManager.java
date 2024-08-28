@@ -7,6 +7,7 @@ import org.browser.automation.core.annotation.CacheLock;
 import org.browser.automation.core.annotation.CacheLock.LockLevel;
 import org.browser.automation.core.annotation.ResourceKey;
 import org.browser.automation.exception.WebDriverInitializationException;
+import org.browser.automation.utils.DriverCacheUtils;
 import org.openqa.selenium.WebDriver;
 
 import java.util.ArrayList;
@@ -70,6 +71,18 @@ public abstract class AbstractWebDriverCacheManager {
                     log.error("No WebDriver found for session ID: {}", sessionId);
                     return new WebDriverInitializationException("No WebDriver found for session ID: " + sessionId);
                 });
+    }
+
+    /**
+     * Checks if a {@link WebDriver} instance is cached by retrieving the session ID from the {@link WebDriverCache}
+     * and verifying its presence.
+     *
+     * @param driver the {@link WebDriver} instance to check.
+     * @return {@code true} if the WebDriver instance is present in the cache, {@code false} otherwise.
+     */
+    @CacheLock(level = LockLevel.RESOURCE)
+    public boolean isDriverCached(WebDriver driver) {
+        return isDriverCached(DriverCacheUtils.getSessionId(webDriverCache, driver));
     }
 
     /**
