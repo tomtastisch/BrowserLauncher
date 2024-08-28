@@ -141,6 +141,21 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- PowerMock Module for JUnit 5 -->
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>2.0.9</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- PowerMock API for Mockito 2 -->
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <version>2.0.9</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -221,8 +236,18 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/NOTICE.txt</exclude>
+                                        <exclude>META-INF/LICENSE.txt</exclude>
+                                        <!-- weitere zu exkludierende Ressourcen -->
+                                    </excludes>
+                                </filter>
+                            </filters>
                             <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.browser.automation.core.BrowserManager</mainClass>
                                 </transformer>

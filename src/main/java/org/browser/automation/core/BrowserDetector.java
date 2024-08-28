@@ -65,10 +65,30 @@ public class BrowserDetector {
     /**
      * Constructs the {@code BrowserDetector} instance with the configuration loaded from the {@code application.conf} file.
      * The configuration is retrieved using {@link ConfigurationProvider}, ensuring that it is loaded in a thread-safe
-     * and efficient manner. This instance specifically loads the configuration associated with the detected OS key.
+     * and efficient manner. This constructor specifically loads the configuration associated with the detected OS key.
+     *
+     * <p>It is designed to be the default constructor that provides a ready-to-use configuration based on the
+     * current operating system environment, making it easy to integrate and use in typical scenarios.</p>
+     *
+     * <p>Internally, this constructor delegates the configuration loading to {@link ConfigurationProvider},
+     * which manages the caching and thread-safe retrieval of configuration files.</p>
      */
     public BrowserDetector() {
-        this.config = ConfigurationProvider.getInstance("application").getConfig();
+        this(ConfigurationProvider.getInstance("application").getConfig());
+    }
+
+    /**
+     * Constructs the {@code BrowserDetector} instance with a custom {@code Config} object. This constructor is useful
+     * when you want to provide a specific configuration programmatically, bypassing the default {@code application.conf}.
+     *
+     * <p>This is particularly beneficial in testing scenarios, where you might want to inject mock configurations, or
+     * when you need to dynamically load configurations based on specific conditions in your application.</p>
+     *
+     * @param config The {@code Config} object that contains the configuration settings for the {@code BrowserDetector}.
+     *               This can be either a custom configuration or one loaded from a different source.
+     */
+    public BrowserDetector(Config config) {
+        this.config = config;
     }
 
     /**
@@ -158,7 +178,7 @@ public class BrowserDetector {
      * @return An {@code Optional<BrowserInfo>} containing the detected default browser,
      * or an empty {@code Optional} if no match is found.
      */
-    private Optional<BrowserInfo> findDefaultBrowser(List<BrowserInfo> installedBrowsers) {
+    Optional<BrowserInfo> findDefaultBrowser(List<BrowserInfo> installedBrowsers) {
         try {
             Process process = Runtime.getRuntime().exec(OSUtils.getDefaultBrowserCommand());
             if (process.waitFor() == 0) {
@@ -183,7 +203,7 @@ public class BrowserDetector {
      * @return An {@code Optional<BrowserInfo>} containing the detected browser from the parsed output,
      * or an empty {@code Optional} if no match is found.
      */
-    private Optional<BrowserInfo> parseBrowserFromOutput(String output, List<BrowserInfo> installedBrowsers) {
+    Optional<BrowserInfo> parseBrowserFromOutput(String output, List<BrowserInfo> installedBrowsers) {
         return output.lines()
                 .map(String::trim)
                 .flatMap(line -> installedBrowsers.stream().filter(browser -> line.equalsIgnoreCase(browser.name)))
