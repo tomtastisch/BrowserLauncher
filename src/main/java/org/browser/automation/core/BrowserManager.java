@@ -2,7 +2,6 @@ package org.browser.automation.core;
 
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
@@ -10,6 +9,7 @@ import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.Objects;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
@@ -80,11 +80,17 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      *
      * @param driverName the name of the {@code WebDriver} instance to be used.
      * @return the cached or newly created {@code WebDriver} instance.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created.
      */
-    @SneakyThrows
-    public WebDriver getOrCreateDriver(String driverName) {
-        WebDriver driver = createWebDriver(driverName);
-        getWebDriverCache().addDriver(driver); // Add the driver to the cache with the session ID as the key
+    public WebDriver getOrCreateDriver(String driverName) throws WebDriverInitializationException {
+        // Versuche, den WebDriver aus dem Cache abzurufen
+        WebDriver driver = getWebDriverCache().getDriverByClassName(driverName);
+
+        if (Objects.isNull(driver)) {
+            driver = createWebDriver(driverName);
+            getWebDriverCache().addDriver(driver);
+        }
+
         return driver;
     }
 

@@ -2,6 +2,8 @@ package org.browser.automation.core;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;
@@ -64,7 +66,18 @@ public class BrowserLauncher {
      * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
     public WebDriver openNewWindow(String driverName) throws WebDriverInitializationException {
-        return open(driverName, getDefaultLink(), true);
+        return open(driverName, defaultLink, WindowType.WINDOW);
+    }
+
+    /**
+     * Opens a new browser tab with default behavior (i.e., not opening a new window).
+     *
+     * @param driverName the name of the {@code WebDriver} instance to be used.
+     * @return the {@code WebDriver} instance associated with the operation.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
+     */
+    public WebDriver openNewTab(String driverName) throws WebDriverInitializationException {
+        return openNewTab(driverName, false);
     }
 
     /**
@@ -76,21 +89,42 @@ public class BrowserLauncher {
      * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created or retrieved.
      */
     public WebDriver openNewTab(String driverName, boolean openNewWindow) throws WebDriverInitializationException {
-        return open(driverName, getDefaultLink(), openNewWindow);
+        WindowType type = openNewWindow ? WindowType.WINDOW : WindowType.TAB;
+
+        // Wenn kein neues Fenster benötigt wird, prüfen, ob bereits ein Fenster offen ist
+        if (!openNewWindow && !isDriverWindowOpen(driverName)) {
+            throw new WebDriverInitializationException("No existing window found for driver: " + driverName);
+        }
+
+        return open(driverName, defaultLink, type);
     }
 
     /**
-     * Opens multiple links in new tabs within an existing browser window.
+     * Opens multiple links in separate tabs within a new or existing browser instance.
      *
-     * @param driverName the name of the {@code WebDriver} instance to be used.
-     * @param links      URLs to be opened in new tabs.
+     * @param driverName    the name of the {@code WebDriver} instance to be used.
+     * @param useNewBrowser if true, a new browser instance is created; otherwise, an existing browser is used.
+     * @param links         URLs to be opened in separate tabs.
      * @return a list of {@code WebDriver} instances used to open the tabs.
      */
-    public List<WebDriver> openLinksInTabs(String driverName, String... links) {
-        WebDriver driver = handleBrowserOperation(driverName, "tab");
-        return Arrays.stream(links)
-                .map(link -> open(driver, link, false))
-                .collect(Collectors.toList());
+    public List<WebDriver> openLinksInSeparateTabs(String driverName, boolean useNewBrowser, String... links) {
+        WebDriver driver = useNewBrowser
+                ? open(driverName, defaultLink, WindowType.WINDOW) // true für neues Fenster (neuer Browser)
+                : handleBrowserOperation(driverName, WindowType.TAB.toString()); // existierenden Browser verwenden
+
+        return openLinksInTabs(driver, links);
+    }
+
+    /**
+     * Opens the specified link in a new window for each installed browser.
+     *
+     * @param link the URL to be opened in new windows.
+     * @return a list of {@code WebDriver} instances, each representing a browser window where the link was opened.
+     */
+    public List<WebDriver> openLinkInInstalledBrowsers(String link) {
+        return manager.getBrowserDetector().getInstalledBrowsers().stream()
+                .map(iBrowser -> open(iBrowser.name(), link, WindowType.WINDOW))
+                .toList();
     }
 
     /**
@@ -100,9 +134,9 @@ public class BrowserLauncher {
      * @param links      URLs to be opened in new windows.
      * @return a list of {@code WebDriver} instances used to open the windows.
      */
-    public List<WebDriver> openLinksInNewWindows(String driverName, String... links) {
+    public List<WebDriver> openLinksInSeparateWindows(String driverName, String... links) {
         return Arrays.stream(links)
-                .map(link -> open(driverName, link, true))
+                .map(link -> open(driverName, link, WindowType.WINDOW))
                 .collect(Collectors.toList());
     }
 
@@ -115,7 +149,7 @@ public class BrowserLauncher {
      */
     public List<WebDriver> openLinkInMultipleBrowsers(String link, String... driverNames) {
         return Arrays.stream(driverNames)
-                .map(driverName -> open(driverName, link, false))
+                .map(driverName -> open(driverName, link, WindowType.TAB))
                 .collect(Collectors.toList());
     }
 
@@ -126,40 +160,54 @@ public class BrowserLauncher {
      * @param links      URLs to be opened in new tabs within a new window.
      * @return a list of {@code WebDriver} instances used to open the tabs.
      */
-    public List<WebDriver> openLinksInNewWindowWithTabs(String driverName, String... links) {
-        WebDriver initialDriver = handleBrowserOperation(driverName, "window");
+    public List<WebDriver> openLinksInNewWindowWithSeparateTabs(String driverName, String... links) {
+        WebDriver initialDriver = handleBrowserOperation(driverName, WindowType.WINDOW.toString());
         List<WebDriver> drivers = new ArrayList<>(Collections.singletonList(initialDriver));
-        List<WebDriver> tabs = Arrays.stream(links)
-                .map(link -> open(initialDriver, link, false))
-                .toList();
+        List<WebDriver> tabs = openLinksInTabs(initialDriver, links);
         drivers.addAll(tabs);
         return drivers;
     }
 
     /**
-     * Opens a link in either a new tab or a new window using the specified {@code WebDriver} instance.
+     * Opens multiple links in separate tabs within a given {@code WebDriver}.
      *
-     * @param driver        the {@code WebDriver} instance used to open the link.
-     * @param link          the URL to be opened in the new tab or window.
-     * @param openNewWindow if true, opens the link in a new window; otherwise, opens it in a new tab.
-     * @return the {@code WebDriver} instance used for the operation.
+     * @param driver the {@code WebDriver} instance used to open the links.
+     * @param links  URLs to be opened in separate tabs.
+     * @return a list of {@code WebDriver} instances used to open the tabs.
      */
-    private synchronized WebDriver open(WebDriver driver, String link, boolean openNewWindow) {
-        return open(driver.getClass().getSimpleName(), link, openNewWindow);
+    @Synchronized
+    private List<WebDriver> openLinksInTabs(WebDriver driver, String... links) {
+        return Arrays.stream(links)
+                .map(link -> open(driver.getClass().getSimpleName(), link, WindowType.TAB))
+                .collect(Collectors.toList());
     }
 
     /**
-     * Opens a link in either a new tab or a new window based on the specified driver name.
+     * Checks if there is an existing browser window open for the given driver.
      *
-     * @param driverName    the name of the {@code WebDriver} instance to be used.
-     * @param link          the URL to be opened in the new tab or window.
-     * @param inNewWindow   if true, opens the link in a new window; otherwise, opens it in a new tab.
+     * @param driverName the name of the {@code WebDriver} instance to be checked.
+     * @return true if there is an existing window open, false otherwise.
+     */
+    @SneakyThrows
+    private boolean isDriverWindowOpen(String driverName) {
+        WebDriver driver = manager.getOrCreateDriver(driverName);
+        return driver != null && !driver.getWindowHandles().isEmpty();
+    }
+
+
+    /**
+     * Opens a link in either a new tab or a new window based on the specified {@code WindowType}.
+     *
+     * @param driverName the name of the {@code WebDriver} instance to be used.
+     * @param link       the URL to be opened in the new tab or window.
+     * @param type       the type of the window, represented by {@code WindowType} (e.g., {@code WindowType.TAB} or {@code WindowType.WINDOW}).
      * @return the {@code WebDriver} instance used for the operation.
      */
-    private synchronized WebDriver open(String driverName, String link, boolean inNewWindow) {
-        final String type = inNewWindow ? WindowType.WINDOW.toString() : WindowType.TAB.toString();
-        WebDriver driver = handleBrowserOperation(driverName, type);
-        driver.switchTo().newWindow(WindowType.fromString(type));
+    @Synchronized
+    @SneakyThrows
+    private WebDriver open(String driverName, String link, WindowType type) {
+        WebDriver driver = handleBrowserOperation(driverName, type.toString());
+        driver.switchTo().newWindow(type);
         driver.get(link);
         return driver;
     }
@@ -173,6 +221,8 @@ public class BrowserLauncher {
      * @param operationType the type of operation being performed (e.g., "window" or "tab").
      * @return the {@code WebDriver} instance associated with the operation.
      */
+    @Synchronized
+    @SneakyThrows
     private WebDriver handleBrowserOperation(String driverName, String operationType) {
         log.info("Performing '{}' operation for driver: {}", operationType, driverName);
         return manager.getOrCreateDriver(driverName);

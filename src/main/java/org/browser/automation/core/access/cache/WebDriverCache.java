@@ -136,6 +136,21 @@ public class WebDriverCache {
     }
 
     /**
+     * Retrieves a {@code WebDriver} from the cache based on the specified driver name.
+     * Searches through the values in the {@code driverCache} to find a {@code WebDriver}
+     * whose class name matches the given driver name.
+     *
+     * @param driverName the name of the {@code WebDriver} class to search for.
+     * @return the {@code WebDriver} instance if found; null otherwise.
+     */
+    public WebDriver getDriverByClassName(@NonNull String driverName) {
+        return driverCache.values().stream()
+                .filter(driver -> driver.getClass().getSimpleName().equalsIgnoreCase(driverName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
      * Retrieves a {@link WebDriver} instance from the cache based on the given session ID.
      *
      * @param sessionId the session ID of the {@link WebDriver} instance.
