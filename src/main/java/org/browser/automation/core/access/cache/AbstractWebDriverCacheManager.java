@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.annotation.CacheLock;
 import org.browser.automation.core.annotation.CacheLock.LockLevel;
 import org.browser.automation.core.annotation.ResourceKey;
+import org.browser.automation.core.functional.WebDriverCacheManager;
 import org.browser.automation.exception.WebDriverInitializationException;
 import org.browser.automation.utils.DriverCacheUtils;
 import org.openqa.selenium.WebDriver;
@@ -39,7 +40,7 @@ import java.util.Optional;
  */
 @Slf4j
 @Getter(AccessLevel.PROTECTED)
-public abstract class AbstractWebDriverCacheManager implements WebDriverCacheManager{
+public abstract class AbstractWebDriverCacheManager implements WebDriverCacheManager {
 
     private final WebDriverCache webDriverCache;
 

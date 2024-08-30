@@ -1,9 +1,6 @@
 package org.browser.automation.core;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.SneakyThrows;
-import lombok.Synchronized;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
@@ -12,21 +9,20 @@ import net.bytebuddy.matcher.ElementMatchers;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.browser.automation.core.access.cache.WebDriverCacheManager;
 import org.browser.automation.core.annotation.Essential;
 import org.browser.automation.core.annotation.handler.LockInvocationHandler;
+import org.browser.automation.core.functional.WebDriverCacheManager;
 import org.browser.automation.exception.EssentialFieldsNotSetException;
-import org.browser.automation.exception.TabNotOpenedException;
 import org.browser.automation.exception.WebDriverInitializationException;
-import org.browser.automation.exception.base.LocalizedExceptionBase;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /**
  * The {@code BrowserLauncher} class provides a high-level API for managing browser operations such as opening new windows or tabs,
@@ -83,15 +79,19 @@ public class BrowserLauncher {
      * A list of browser names (e.g., "Chrome", "Firefox") that will be used to open the URLs.
      * This field is annotated with {@link Essential}, meaning it is required for the execution of browser operations.
      */
-    @Essential
     private final List<String> browsers;
 
     /**
      * A list of URLs that will be opened in the specified browsers.
      * This field is also annotated with {@link Essential}, indicating its necessity for the operation.
      */
-    @Essential
     private final List<String> urls;
+
+    /**
+     * A list of comparisons to be executed after the URLs are opened in the browsers.
+     * This list is thread-safe to ensure that comparisons can be added and executed concurrently.
+     */
+    final List<Consumer<List<WebDriver>>> comparisons = new CopyOnWriteArrayList<>();
 
     /**
      * The main method demonstrating how to instantiate and use the {@code BrowserLauncher} class.
@@ -99,70 +99,65 @@ public class BrowserLauncher {
      *
      * @param args command-line arguments (not used).
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws EssentialFieldsNotSetException {
 
-        /* BrowserLauncher launcher = BrowserLauncher.builder()
+        BrowserLauncher launcher = BrowserLauncher.builder()
                 .withDefaultBrowser()  // Set the default browser to be used
                 .urls(List.of("https://example.com", "https://www.google.com"))  // Define the URLs to be opened
-                .withNewManager()  // Use a new BrowserManager instance
+                .withNewBrowserManager()  // Use a new BrowserManager instance
                 .build();  // useNewWindow defaults to true
 
         // Execute the configured browser operations
-        //List<WebDriver> drivers = launcher.execute();
-        */
+        List<WebDriver> drivers = launcher.validateAndExecute();
+
         System.out.println("Hello World");
     }
 
     /**
-     * The {@code BrowserLauncherBuilder} class provides a builder for creating instances of {@link BrowserLauncher}.
-     * It allows for the configuration of various options, including the browser to use, the URLs to open, and
-     * the {@link BrowserManager} instance to manage the browsers.
-     */
-    public static class BrowserLauncherBuilder {
-
-        /**
-         * Configures the builder to use the default browser detected on the system.
-         *
-         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
-         */
-        BrowserLauncherBuilder withDefaultBrowser() {
-            this.browsers = Collections.singletonList(DETECTOR.getDefaultBrowserName(true));
-            return this;
-        }
-
-        /**
-         * Configures the builder to use a new {@link BrowserManager} instance,
-         * dynamically created using ByteBuddy with method interception via {@link LockInvocationHandler}.
-         *
-         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
-         */
-        @SneakyThrows
-        BrowserLauncherBuilder withNewManager() {
-            this.manager = new ByteBuddy()
-                    .subclass(BrowserManager.class)
-                    .method(ElementMatchers.isDeclaredBy(WebDriverCacheManager.class))
-                    .intercept(MethodDelegation.to(new LockInvocationHandler(BrowserManager.getInstance())))
-                    .make()
-                    .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
-                    .getLoaded().getDeclaredConstructor().newInstance();
-
-            return this;
-        }
-    }
-
-    /**
-     * Executes the browser operations that have been set up by opening the specified URLs in the designated browsers.
-     * This method must be called after setting up the browser context to ensure that the necessary browser operations are performed.
+     * Validates the required fields and then executes the browser operations by opening the specified URLs
+     * in the configured browsers. This method should be used when you want to ensure that all required fields
+     * are set before performing any browser operations.
+     *
+     * <p>Example usage:
+     * <pre>
+     * {@code
+     * BrowserLauncher launcher = BrowserLauncher.builder()
+     *      .withDefaultBrowser()
+     *      .urls(List.of("https://example.com", "https://www.google.com"))
+     *      .build();
+     * List<WebDriver> drivers = launcher.validateAndExecute();
+     * }
+     * </pre>
      *
      * @return a list of {@link WebDriver} instances used to open the URLs.
      * @throws EssentialFieldsNotSetException if any required fields are missing.
      */
-    @Synchronized
-    public List<WebDriver> execute() throws EssentialFieldsNotSetException {
+    public List<WebDriver> validateAndExecute() throws EssentialFieldsNotSetException {
         validate();
-        return browsers.stream()
+        return execute();
+    }
+
+    /**
+     * Executes the browser operations that have been set up by opening the specified URLs in the designated browsers.
+     * After opening the URLs, any comparisons that have been configured will be executed.
+     * This method must be called after setting up the browser context to ensure that the necessary browser operations are performed.
+     * <br>
+     * <b>Note:</b> This method is considered <b>unsafe</b> for external use, meaning that it should be used with caution
+     * as it assumes that all necessary validations have been completed prior to its invocation. It is recommended to use
+     * {@link #validateAndExecute()} instead, which includes validation before execution.
+     *
+     * @return a list of {@link WebDriver} instances used to open the URLs.
+     */
+    @Synchronized
+    public List<WebDriver> execute() {
+        List<WebDriver> drivers = browsers.stream()
                 .flatMap(browser -> urls.stream().map(url -> open(browser, url, useNewWindow)))
                 .toList();
+
+        // Execute the comparisons after opening the browsers
+        comparisons.forEach(comparison -> comparison.accept(drivers));
+
+        return drivers;
     }
 
     /**
@@ -176,21 +171,10 @@ public class BrowserLauncher {
      * @return the {@link WebDriver} instance used for the operation.
      */
     @Synchronized
+    @SneakyThrows
     private WebDriver open(String browserName, String url, boolean useNewWindow) {
-        WebDriver driver = null;
         boolean isBrowserNotExists = !getManager().isDriverCachedByName(browserName);
-
-        try {
-            if (!useNewWindow && isBrowserNotExists) {
-                throw new TabNotOpenedException(browserName);
-            }
-
-            driver = open(browserName, url, (isBrowserNotExists && useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
-        } catch (LocalizedExceptionBase le) {
-            log.error("Failed to initialize WebDriver for browser: {}", browserName, le);
-            manager.clearAllDrivers();
-        }
-        return driver;
+        return open(browserName, url, (isBrowserNotExists || useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
     }
 
     /**
@@ -251,5 +235,104 @@ public class BrowserLauncher {
     @SneakyThrows
     private Object readField(Field field) {
         return FieldUtils.readField(field, this, true);  // Uses reflection to read the value of the specified field
+    }
+
+    /**
+     * Builder class to configure and create instances of {@link BrowserLauncher}.
+     *
+     * <p>This class is designed to provide a fluent API for setting up the launch parameters for browsers,
+     * managing WebDriver instances, and adding custom comparisons for browser testing. It allows for the
+     * configuration of various aspects of the browser launching process, including the selection of the default
+     * browser, creating new browser manager instances, and adding custom comparison logic to evaluate browser
+     * behavior during tests.</p>
+     *
+     * <p>Users can chain multiple configuration methods to customize the behavior of the {@link BrowserLauncher}.
+     * This design ensures that the configuration process is flexible and can be adapted to different testing
+     * scenarios, from simple URL loading tests to more complex, method-intercepting browser management setups.</p>
+     *
+     * <p>Example usage:</p>
+     * <pre>
+     * BrowserLauncher launcher = BrowserLauncher.builder()
+     *     .withDefaultBrowser()
+     *     .withNewBrowserManager()
+     *     .addComparison(myComparison)
+     *     .build();
+     * </pre>
+     */
+    public class BrowserLauncherBuilder {
+
+        /**
+         * Configures the builder to use the default browser detected on the system.
+         *
+         * <p>This method uses the {@link BrowserDetector#getDefaultBrowserName(boolean)} method to automatically detect
+         * and set the default browser for the system. The method checks the system's configuration to identify the
+         * default web browser installed on the user's operating system. If the default browser cannot be determined,
+         * it uses a fallback mechanism to select the first available browser from the list of installed browsers.</p>
+         *
+         * <p>The {@code BrowserDetector} class provides the logic to identify the system's default browser by examining
+         * system-specific configurations, executing OS commands, and analyzing installed browsers. This detection process
+         * is robust and accommodates different operating systems by dynamically adapting to the environment.</p>
+         *
+         * <p>If no browsers are installed or detected, this method will still return a valid builder instance, but the
+         * execution of the browser launch operations will fail unless a valid browser is explicitly set before execution.</p>
+         *
+         * <p>Example usage:</p>
+         * <pre>
+         * BrowserLauncher launcher = BrowserLauncher.builder()
+         *     .withDefaultBrowser()
+         *     .urls(List.of("<a href="https://example.com">...</a>", "<a href="https://www.google.com">...</a>"))
+         *     .build();
+         * </pre>
+         *
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        BrowserLauncherBuilder withDefaultBrowser() {
+            this.browsers = Collections.singletonList(DETECTOR.getDefaultBrowserName(true));
+            return this;
+        }
+
+        /**
+         * Configures the builder to use a new {@link BrowserManager} instance,
+         * dynamically created using ByteBuddy with method interception via {@link LockInvocationHandler}.
+         *
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        @SneakyThrows
+        BrowserLauncherBuilder withNewBrowserManager() {
+            this.manager = new ByteBuddy()
+                    .subclass(BrowserManager.class)
+                    .method(ElementMatchers.isDeclaredBy(WebDriverCacheManager.class))
+                    .intercept(MethodDelegation.to(new LockInvocationHandler(BrowserManager.getInstance())))
+                    .make()
+                    .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                    .getLoaded().getDeclaredConstructor().newInstance();
+
+            return this;
+        }
+
+        /**
+         * Adds a comparison to the list of comparisons to be executed after the URLs are opened in the browsers.
+         *
+         * <p>The comparison is a {@link Consumer} that takes a list of {@link WebDriver} instances as input
+         * and performs any necessary operations, such as assertions or verifications, on those drivers.</p>
+         *
+         * <p>This method supports chaining, allowing multiple comparisons to be added in sequence.</p>
+         *
+         * <p>Example usage:</p>
+         * <pre>
+         * BrowserLauncher launcher = BrowserLauncher.builder()
+         *     .withDefaultBrowser()
+         *     .urls(List.of("<a href="https://example.com">...</a>", "<a href="https://www.google.com">...</a>"))
+         *     .addComparison(myComparison)
+         *     .build();
+         * </pre>
+         *
+         * @param comparison a {@link Consumer} that accepts a list of {@link WebDriver} instances.
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        public BrowserLauncherBuilder addComparison(Consumer<List<WebDriver>> comparison) {
+            comparisons.add(comparison);
+            return this;
+        }
     }
 }
