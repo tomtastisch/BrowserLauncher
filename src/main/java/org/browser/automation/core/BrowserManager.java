@@ -2,6 +2,7 @@ package org.browser.automation.core;
 
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
@@ -13,7 +14,7 @@ import java.util.Objects;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
-    < * including opening new windows or tabs. It uses the {@code WebDriverCache} to centrally manage
+ * < * including opening new windows or tabs. It uses the {@code WebDriverCache} to centrally manage
  * and retrieve {@code WebDriver} instances. This class follows the Singleton design pattern
  * to ensure a single instance is used throughout the application.
  *
@@ -62,6 +63,10 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
         return new BrowserManager(webDriverCache);
     }
 
+    protected BrowserManager() {
+        this(WebDriverCache.getInstance());
+    }
+
     /**
      * Private constructor to prevent external instantiation. Initializes the {@code BrowserManager}
      * with the specified {@code WebDriverCache} instance and a shared instance of {@code BrowserDetector}.
@@ -82,9 +87,10 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      * @return the cached or newly created {@code WebDriver} instance.
      * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created.
      */
+    @Synchronized
     public WebDriver getOrCreateDriver(String driverName) throws WebDriverInitializationException {
-        // Versuche, den WebDriver aus dem Cache abzurufen
-        WebDriver driver = getWebDriverCache().getDriverByClassName(driverName);
+        // Check if existing in the cache
+        WebDriver driver = getWebDriverCache().getDriverByName(driverName);
 
         if (Objects.isNull(driver)) {
             driver = createWebDriver(driverName);
@@ -120,6 +126,7 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      * @throws WebDriverInitializationException if the specified browser is unsupported or unavailable,
      *                                          or if the {@code WebDriver} instance cannot be created.
      */
+    @Synchronized
     public WebDriver createWebDriver(String driverName) throws WebDriverInitializationException {
         return browserDetector.getInstalledBrowsers().stream()
                 .filter(browser -> browser.name().equalsIgnoreCase(driverName))

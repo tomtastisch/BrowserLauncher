@@ -24,15 +24,4 @@ public abstract class LocalizedExceptionBase extends Exception {
     public LocalizedExceptionBase(String messageKey, Object... args) {
         super(MessageFormat.format(MESSAGES.getString(messageKey), args));
     }
-
-    /**
-     * Constructs a new {@code LocalizedExceptionBase} with a custom message and the specified key and arguments.
-     *
-     * @param customMessage the custom message to use.
-     * @param messageKey    the key for the message in the properties file.
-     * @param args          the arguments to format the message with.
-     */
-    public LocalizedExceptionBase(String customMessage, String messageKey, Object... args) {
-        super(MessageFormat.format(customMessage, args));
-    }
 }

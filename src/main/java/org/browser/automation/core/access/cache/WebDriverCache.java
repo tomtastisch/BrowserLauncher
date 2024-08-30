@@ -9,15 +9,12 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.utils.DriverCacheUtils;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * A thread-safe cache for managing multiple {@link WebDriver} instances.<br>
@@ -131,8 +128,7 @@ public class WebDriverCache {
      * @param driver the {@link WebDriver} instance to cache.
      */
     public void addDriver(@NonNull WebDriver driver) {
-        String sessionId = DriverCacheUtils.getSessionId(driver);
-        driverCache.put(sessionId, driver);
+        driverCache.computeIfAbsent(DriverCacheUtils.getSessionId(driver), k -> driver);
     }
 
     /**
@@ -143,9 +139,9 @@ public class WebDriverCache {
      * @param driverName the name of the {@code WebDriver} class to search for.
      * @return the {@code WebDriver} instance if found; null otherwise.
      */
-    public WebDriver getDriverByClassName(@NonNull String driverName) {
+    public WebDriver getDriverByName(@NonNull String driverName) {
         return driverCache.values().stream()
-                .filter(driver -> driver.getClass().getSimpleName().equalsIgnoreCase(driverName))
+                .filter(driver -> ((RemoteWebDriver) driver).getCapabilities().getBrowserName().equalsIgnoreCase(driverName))
                 .findFirst()
                 .orElse(null);
     }
@@ -158,6 +154,10 @@ public class WebDriverCache {
      */
     public WebDriver getDriverBySessionId(@NonNull String sessionId) {
         return driverCache.get(sessionId);
+    }
+
+    public String getSessionId(@NonNull WebDriver driver) {
+        return DriverCacheUtils.getSessionId(driver);
     }
 
     /**
@@ -194,6 +194,7 @@ public class WebDriverCache {
      * This allows for flexible configuration of the cache timeout in different environments, such as<br>
      * development, testing, or production, by simply adjusting the environment variable or the config file.<br>
      * <br>
+     *
      * @return the timeout duration in milliseconds as a long value.
      */
     private long getCleanupTimeout() {

@@ -12,6 +12,7 @@ import org.openqa.selenium.WebDriver;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -38,7 +39,7 @@ import java.util.Optional;
  */
 @Slf4j
 @Getter(AccessLevel.PROTECTED)
-public abstract class AbstractWebDriverCacheManager {
+public abstract class AbstractWebDriverCacheManager implements WebDriverCacheManager{
 
     private final WebDriverCache webDriverCache;
 
@@ -64,6 +65,7 @@ public abstract class AbstractWebDriverCacheManager {
      * @return the cached {@link WebDriver} instance associated with the session ID.
      * @throws WebDriverInitializationException if no WebDriver instance is found for the given session ID.
      */
+    @Override
     @CacheLock(level = LockLevel.RESOURCE)
     public WebDriver getWebDriver(@ResourceKey String sessionId) throws WebDriverInitializationException {
         return Optional.ofNullable(webDriverCache.getDriverBySessionId(sessionId))
@@ -80,9 +82,10 @@ public abstract class AbstractWebDriverCacheManager {
      * @param driver the {@link WebDriver} instance to check.
      * @return {@code true} if the WebDriver instance is present in the cache, {@code false} otherwise.
      */
+    @Override
     @CacheLock(level = LockLevel.RESOURCE)
-    public boolean isDriverCached(WebDriver driver) {
-        return isDriverCached(DriverCacheUtils.getSessionId(webDriverCache, driver));
+    public boolean isDriverCachedBySessionId(WebDriver driver) {
+        return isDriverCachedBySessionId(DriverCacheUtils.getSessionId(webDriverCache, driver));
     }
 
     /**
@@ -95,9 +98,16 @@ public abstract class AbstractWebDriverCacheManager {
      * @param sessionId the session ID of the {@link WebDriver} instance.
      * @return {@code true} if the WebDriver is present in the cache, {@code false} otherwise.
      */
+    @Override
     @CacheLock(level = LockLevel.RESOURCE)
-    public boolean isDriverCached(@ResourceKey String sessionId) {
-        return webDriverCache.getDriverBySessionId(sessionId) != null;
+    public boolean isDriverCachedBySessionId(@ResourceKey String sessionId) {
+        return Objects.nonNull(webDriverCache.getDriverBySessionId(sessionId));
+    }
+
+    @Override
+    @CacheLock(level = LockLevel.RESOURCE)
+    public boolean isDriverCachedByName(@ResourceKey String driverName) {
+        return Objects.nonNull(webDriverCache.getDriverByName(driverName));
     }
 
     /**
@@ -109,6 +119,7 @@ public abstract class AbstractWebDriverCacheManager {
      *
      * @return a list of all cached {@link WebDriver} instances.
      */
+    @Override
     @CacheLock(level = LockLevel.GLOBAL)
     public List<WebDriver> getAllCachedDrivers() {
         return new ArrayList<>(webDriverCache.getDriverCache().values());
@@ -125,6 +136,7 @@ public abstract class AbstractWebDriverCacheManager {
      * <p>The method logs how many WebDriver instances were successfully closed out of the
      * total initially cached instances.</p>
      */
+    @Override
     @CacheLock(level = LockLevel.GLOBAL)
     public void clearAllDrivers() {
         int initialSize = webDriverCache.getDriverCache().size();
@@ -145,6 +157,7 @@ public abstract class AbstractWebDriverCacheManager {
      *
      * @return the number of cached {@link WebDriver} instances.
      */
+    @Override
     @CacheLock(level = LockLevel.GLOBAL)
     public int getCachedDriverCount() {
         return webDriverCache.getDriverCache().size();

@@ -7,8 +7,10 @@ import com.typesafe.config.ConfigException;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.browser.automation.exception.PackageNotFoundException;
 import org.browser.automation.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
@@ -117,6 +119,15 @@ public class BrowserDetector {
         public BrowserInfo {
             // The @JsonCreator and @JsonProperty annotations enable Jackson to correctly deserialize the record
         }
+    }
+
+    public String getDefaultBrowserName() {
+        return getDefaultBrowserName(false);
+    }
+
+    public String getDefaultBrowserName(boolean useFallBackBrowser) {
+        BrowserInfo defBrowser = new BrowserInfo("","", null);
+        return getDefaultBrowserInfo(true).orElseGet(() -> defBrowser).name();
     }
 
     /**
@@ -360,8 +371,9 @@ public class BrowserDetector {
      * @param driverClass the {@code Class} of the WebDriver to instantiate
      * @return an instance of the specified WebDriver
      */
+    @Synchronized
     @SneakyThrows
     protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass) {
-        return driverClass.getDeclaredConstructor().newInstance();
+        return ConstructorUtils.invokeConstructor(driverClass);
     }
 }
