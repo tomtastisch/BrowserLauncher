@@ -19,14 +19,11 @@ jobs:
           java-version: ${{ matrix.jdk }}
           distribution: 'temurin'
 
-      - name: Install Qodana
-        run: |
-          curl -sS https://get.jetbrains.com/qodana/installer.sh | bash
-
       - name: Run Qodana Scan
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
-        run: qodana scan --show-report
+        run: |
+          docker run --rm -e QODANA_TOKEN=$QODANA_TOKEN -v $(pwd):/data jetbrains/qodana-jvm --show-report
 
       - name: Install Homebrew dependencies
         run: |
