@@ -25,6 +25,7 @@ import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 
+import java.lang.ref.Cleaner;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <pre>
  * BrowserLauncher launcher = BrowserLauncher.builder()
  *     .browsers(List.of("Chrome", "Firefox"))
- *     .urls(List.of("<a href="https://example.com">...</a>", "<a href="https://another-example.com">...</a>"))
+ *     .urls(List.of("https://example.com", "https://another-example.com"))
  *     .build(); // useNewWindow defaults to true
  *
  * launcher.execute();
@@ -65,6 +66,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BrowserLauncher {
 
     private static final BrowserDetector DETECTOR = new BrowserDetector();
+    private static final Cleaner cleaner = Cleaner.create();
 
     @Builder.Default
     private String builderId = "";
@@ -130,12 +132,14 @@ public class BrowserLauncher {
                 .withDefaultOptions()
                 .urls(List.of("https://example.com", "https://www.google.com"))  // Define the URLs to be opened
                 .withNewBrowserManager()  // Use a new BrowserManager instance
+                .autoCleanUp()  // Enable automatic cleanup
                 .build();  // useNewWindow defaults to true
 
         // Execute the configured browser operations
         List<WebDriver> drivers = launcher.validateAndExecute();
 
-        System.out.println("Hello World");
+        // Output and close
+        drivers.forEach(System.out::println);
     }
 
     /**
@@ -202,7 +206,7 @@ public class BrowserLauncher {
     @SneakyThrows
     private WebDriver open(String browserName, String url, boolean useNewWindow) {
         boolean isBrowserNotExists = !getManager().isDriverCachedByName(browserName);
-        return open(browserName, url, (isBrowserNotExists & useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
+        return open(browserName, url, (isBrowserNotExists && useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
     }
 
     /**
@@ -290,6 +294,7 @@ public class BrowserLauncher {
      *     .withDefaultBrowser()
      *     .withDefaultOptions()
      *     .withNewBrowserManager()
+     *     .autoCleanUp()
      *     .build();
      * </pre>
      */
@@ -405,7 +410,7 @@ public class BrowserLauncher {
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
         public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities) {
-            if(Objects.isNull(options)) {
+            if (Objects.isNull(options)) {
                 options = new ConcurrentHashMap<>();
             }
 
@@ -437,6 +442,23 @@ public class BrowserLauncher {
                             .or(ElementMatchers.named("addPreference"))
                             .or(ElementMatchers.named("setCapability"))
             );
+        }
+
+        /**
+         * Enables automatic cleanup for the {@link BrowserLauncher}. This method registers the cleanup action
+         * with the {@link Cleaner} to ensure that when the {@link BrowserLauncher} instance is no longer referenced,
+         * all associated {@link WebDriver} instances are properly closed.
+         *
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        public BrowserLauncherBuilder autoCleanUp() {
+            cleaner.register(this.manager, () -> {
+                if (Objects.nonNull(this.manager)) {
+                    this.manager.clearAllDrivers();
+                    log.info("Automatically closed all WebDriver instances.");
+                }
+            });
+            return this;
         }
     }
 }

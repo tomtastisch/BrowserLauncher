@@ -50,7 +50,6 @@ public class DriverUtils {
      * @param browserName  the name of the browser for which to create the options instance (e.g., "chrome", "firefox").
      * @param capabilities the {@link MutableCapabilities} to be merged into the created options instance.
      * @return the created and configured options instance.
-     * @throws WebDriverInitializationException if the options class cannot be found, instantiated, or merged with the capabilities.
      */
     @SuppressWarnings("unchecked")
     @SneakyThrows({InvocationTargetException.class, NoSuchMethodException.class, IllegalAccessException.class, InstantiationException.class, ClassNotFoundException.class})
@@ -89,7 +88,7 @@ public class DriverUtils {
      * @return the session ID of the WebDriver if it is found in the cache, otherwise an empty string.
      */
     public String getSessionId(WebDriverCache cache, WebDriver driver) {
-        return cache.getDriverCache().entrySet().stream()
+        return cache.getDriverCacheContent().entrySet().stream()
                 .filter(entry -> entry.getValue().equals(driver))
                 .map(Map.Entry::getKey)
                 .findAny()

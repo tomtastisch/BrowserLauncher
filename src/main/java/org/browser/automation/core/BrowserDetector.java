@@ -16,13 +16,11 @@ import org.browser.automation.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
 import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriver.Options;
 import org.openqa.selenium.remote.AbstractDriverOptions;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -129,7 +127,7 @@ public class BrowserDetector {
     }
 
     public String getDefaultBrowserName(boolean useFallBackBrowser) {
-        BrowserInfo defBrowser = new BrowserInfo("","", null);
+        BrowserInfo defBrowser = new BrowserInfo("", "", null);
         return getDefaultBrowserInfo(useFallBackBrowser).orElse(defBrowser).name();
     }
 

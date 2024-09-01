@@ -1,6 +1,5 @@
 package org.browser.automation.core.access.cache;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.annotation.CacheLock;
@@ -39,7 +38,7 @@ import java.util.Optional;
  * with {@link CacheLock}, it ensures that cache operations remain thread-safe in multi-threaded environments.</p>
  */
 @Slf4j
-@Getter(AccessLevel.PROTECTED)
+@Getter
 public abstract class AbstractWebDriverCacheManager implements WebDriverCacheManager {
 
     private final WebDriverCache webDriverCache;
@@ -123,7 +122,7 @@ public abstract class AbstractWebDriverCacheManager implements WebDriverCacheMan
     @Override
     @CacheLock(level = LockLevel.GLOBAL)
     public List<WebDriver> getAllCachedDrivers() {
-        return new ArrayList<>(webDriverCache.getDriverCache().values());
+        return new ArrayList<>(webDriverCache.getDriverCacheContent().values());
     }
 
     /**
@@ -140,9 +139,9 @@ public abstract class AbstractWebDriverCacheManager implements WebDriverCacheMan
     @Override
     @CacheLock(level = LockLevel.GLOBAL)
     public void clearAllDrivers() {
-        int initialSize = webDriverCache.getDriverCache().size();
+        int initialSize = webDriverCache.getDriverCacheContent().size();
 
-        long successfullyClosed = webDriverCache.getDriverCache().values().stream()
+        long successfullyClosed = webDriverCache.getDriverCacheContent().values().stream()
                 .flatMap(driver -> Optional.ofNullable(webDriverCache.removeDriver(driver)).stream())
                 .count();
 
@@ -161,6 +160,6 @@ public abstract class AbstractWebDriverCacheManager implements WebDriverCacheMan
     @Override
     @CacheLock(level = LockLevel.GLOBAL)
     public int getCachedDriverCount() {
-        return webDriverCache.getDriverCache().size();
+        return webDriverCache.getDriverCacheContent().size();
     }
 }

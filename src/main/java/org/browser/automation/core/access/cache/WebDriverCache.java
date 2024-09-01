@@ -57,7 +57,7 @@ public class WebDriverCache {
      * and the values are {@link WebDriver} instances.
      */
     @JsonIgnore
-    private final ConcurrentMap<String, WebDriver> driverCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, WebDriver> driverCacheContent = new ConcurrentHashMap<>();
 
     /**
      * A scheduler service used for running automatic cache cleanup tasks at regular intervals.
@@ -127,7 +127,7 @@ public class WebDriverCache {
      * @param driver the {@link WebDriver} instance to cache.
      */
     public void addDriver(@NonNull WebDriver driver) {
-        driverCache.putIfAbsent(DriverUtils.getSessionId(driver), driver);
+        driverCacheContent.putIfAbsent(DriverUtils.getSessionId(driver), driver);
     }
 
     /**
@@ -139,7 +139,7 @@ public class WebDriverCache {
      * @return the {@code WebDriver} instance if found; null otherwise.
      */
     public WebDriver getDriverByName(@NonNull String driverName) {
-        return driverCache.values().stream()
+        return driverCacheContent.values().stream()
                 .filter(driver -> DriverUtils.getBrowserName(driver).equalsIgnoreCase(driverName))
                 .findFirst()
                 .orElse(null);
@@ -152,7 +152,7 @@ public class WebDriverCache {
      * @return the cached {@link WebDriver} instance, or {@code null} if not found.
      */
     public WebDriver getDriverBySessionId(@NonNull String sessionId) {
-        return driverCache.get(sessionId);
+        return driverCacheContent.get(sessionId);
     }
 
     public String getSessionId(@NonNull WebDriver driver) {
@@ -178,7 +178,7 @@ public class WebDriverCache {
      * @return the session ID of the removed {@link WebDriver} instance.
      */
     public String removeDriver(@NonNull String sessionId) {
-        WebDriver driver = driverCache.remove(sessionId);
+        WebDriver driver = driverCacheContent.remove(sessionId);
         if (Objects.nonNull(driver)) {
             driver.quit();
         }
@@ -213,7 +213,7 @@ public class WebDriverCache {
     private void startAutoCleanup() {
         scheduler.scheduleAtFixedRate(() -> {
             log.info("Running automatic cache cleanup...");
-            driverCache.forEach((sessionId, driver) -> {
+            driverCacheContent.forEach((sessionId, driver) -> {
                 // Placeholder for more advanced inactivity tracking and cleanup logic
                 log.info("Checking for inactive drivers...");
                 // Implement actual inactivity tracking logic here
