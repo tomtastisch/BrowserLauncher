@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Ändere hier von macos-latest zu ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         jdk: [17]
@@ -19,6 +19,11 @@ jobs:
           java-version: ${{ matrix.jdk }}
           distribution: 'temurin'
 
+      # Füge einen Schritt hinzu, um den Inhalt des Verzeichnisses zu überprüfen
+      - name: List files in working directory
+        run: ls -R
+
+      # Führe den Qodana Scan durch
       - name: Run Qodana Scan
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
