@@ -23,6 +23,7 @@ jobs:
         run: |
           brew update
           brew install defaultbrowser
+          brew upgrade
 
       - name: Enable Safari Remote Automation
         run: sudo /usr/bin/safaridriver --enable
@@ -33,6 +34,12 @@ jobs:
 
       - name: Display build log
         run: cat build-debug.log  # Zeigen Sie die Debug-Ausgabe zur Fehlersuche an.
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-debug-log
+          path: build-debug.log
 
       - name: Set execute permissions for test script
         run: chmod +x ./scripts/run_tests.sh
