@@ -1,10 +1,10 @@
-name: Java CI with macOS
+name: Java CI with Ubuntu
 
 on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest  # Ändere hier von macos-latest zu ubuntu-latest
     strategy:
       matrix:
         jdk: [17]
@@ -25,17 +25,12 @@ jobs:
         run: |
           docker run --rm -e QODANA_TOKEN=$QODANA_TOKEN -v $(pwd):/data jetbrains/qodana-jvm --show-report
 
-      - name: Install Homebrew dependencies
-        run: |
-          brew update
-          brew install defaultbrowser  # Verifizieren Sie, ob dieses Paket benötigt wird und ob es korrekt ist.
-
       - name: Build and compile the project with debug output
         run: |
-          mvn clean package -X > build-debug.log || true  # Speichern Sie die detaillierte Debug-Ausgabe in einer Datei.
+          mvn clean package -X > build-debug.log || true
 
       - name: Display build log
-        run: cat build-debug.log  # Zeigen Sie die Debug-Ausgabe zur Fehlersuche an.
+        run: cat build-debug.log
 
       - name: Set execute permissions for test script
         run: chmod +x ./scripts/run_tests.sh
