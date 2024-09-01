@@ -352,7 +352,8 @@ public class BrowserDetector {
      */
     @SneakyThrows
     private static Class<? extends WebDriver> resolveWebDriverClass(String driverClassName, String packagePath) {
-        Set<Class<? extends WebDriver>> subTypes = new Reflections(packagePath, Scanners.SubTypes).getSubTypesOf(WebDriver.class);
+        Set<Class<? extends WebDriver>> subTypes = new Reflections(packagePath, Scanners.SubTypes)
+                .getSubTypesOf(WebDriver.class);
 
         // Attempt to find the exact class match or fall back to the first available class
         return subTypes.stream()

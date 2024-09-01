@@ -1,4 +1,4 @@
-package org.browser.automation.core.functional;
+package org.browser.automation.core.access.cache.functional;
 
 import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.WebDriver;

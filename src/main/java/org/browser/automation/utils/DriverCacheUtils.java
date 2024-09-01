@@ -80,4 +80,25 @@ public class DriverCacheUtils {
                 .map(Object::toString)
                 .orElse(UUID.randomUUID().toString());
     }
+
+    /**
+     * Retrieves the name of the WebDriver instance in lowercase.
+     * This method extracts the browser name from the WebDriver's capabilities,
+     * ensuring that the name is returned in lowercase letters.
+     *
+     * <p>Example usage:</p>
+     * <pre>
+     * WebDriver driver = ...; // a WebDriver instance
+     * String browserName = DriverCacheUtils.getBrowserName(driver);
+     * </pre>
+     *
+     * @param driver the {@link WebDriver} instance from which the browser name is to be retrieved.
+     * @return the name of the browser in lowercase, or "unknown" if the name cannot be determined.
+     */
+    public String getBrowserName(WebDriver driver) {
+        return Optional.ofNullable(driver)
+                .filter(d -> d instanceof RemoteWebDriver)
+                .map(d -> ((RemoteWebDriver) d).getCapabilities().getBrowserName().toLowerCase())
+                .orElse("unknown");
+    }
 }
