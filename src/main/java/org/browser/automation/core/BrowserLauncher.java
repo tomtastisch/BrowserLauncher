@@ -224,13 +224,21 @@ public class BrowserLauncher {
     }
 
     /**
-     * Handles the common logic for browser operations, such as opening new windows or tabs.
-     * Logs the operation being performed and retrieves the corresponding {@link WebDriver} instance from the {@link BrowserManager}.
+     * Handles the logic for initializing or retrieving a {@link WebDriver} instance and performing
+     * a specific browser operation, such as opening a new window or tab.
      *
-     * @param driverName    the name of the {@link WebDriver} instance to be used.
+     * <p>The method logs the operation being performed and ensures that the correct
+     * {@link WebDriver} instance is retrieved or created. It utilizes the {@link BrowserManager}
+     * to manage and retrieve the WebDriver instances, configured with the appropriate
+     * {@link MutableCapabilities}.</p>
+     *
+     * <p>If the specified browser does not have custom capabilities configured,
+     * the method will use default capabilities.</p>
+     *
+     * @param driverName    the name of the browser (e.g., "chrome", "firefox").
      * @param operationType the type of operation being performed (e.g., "window" or "tab").
      * @return the {@link WebDriver} instance associated with the operation.
-     * @throws WebDriverInitializationException if the WebDriver instance cannot be retrieved or created.
+     * @throws WebDriverInitializationException if the {@link WebDriver} instance cannot be retrieved or created.
      */
     @Synchronized
     private WebDriver handleBrowserOperation(String driverName, String operationType) throws WebDriverInitializationException {

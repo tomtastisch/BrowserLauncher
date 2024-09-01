@@ -1,9 +1,11 @@
 package org.browser.automation.core;
 
+import com.google.common.base.Preconditions;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.exception.WebDriverInitializationException;
@@ -84,9 +86,12 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
     /**
      * Retrieves or creates a {@code WebDriver} instance based on the provided driver name.
      * If a cached instance exists, it is returned; otherwise, a new instance is created,
-     * added to the cache, and returned.
+     * configured with default {@link MutableCapabilities}, added to the cache, and returned.
      *
-     * @param driverName the name of the {@code WebDriver} instance to be used.
+     * <p>This method acts as a convenience overload that assumes default capabilities
+     * for the specified browser.</p>
+     *
+     * @param driverName the name of the browser (e.g., "chrome", "firefox").
      * @return the cached or newly created {@code WebDriver} instance.
      * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created.
      */
@@ -95,6 +100,22 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
         return getOrCreateDriver(driverName, new MutableCapabilities());
     }
 
+    /**
+     * Retrieves or creates a {@code WebDriver} instance based on the provided driver name and custom capabilities.
+     * If a cached instance exists, it is returned; otherwise, a new instance is created,
+     * configured with the specified {@link MutableCapabilities}, added to the cache, and returned.
+     *
+     * <p>The method first checks the cache for an existing {@code WebDriver} instance associated with the
+     * specified browser name. If a matching instance is found, it is returned immediately. If no such instance
+     * exists, the method creates a new {@code WebDriver} using browser-specific options, which are determined
+     * by merging the provided capabilities with the default settings for that browser.</p>
+     *
+     * @param driverName   the name of the browser (e.g., "chrome", "firefox").
+     * @param capabilities the custom capabilities to configure the {@code WebDriver} instance.
+     * @return the cached or newly created {@code WebDriver} instance.
+     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created.
+     */
+    @Synchronized
     public WebDriver getOrCreateDriver(String driverName, MutableCapabilities capabilities) throws WebDriverInitializationException {
         // Check if existing in the cache
         WebDriver driver = getWebDriverCache().getDriverByName(driverName);
@@ -110,34 +131,37 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
     }
 
     /**
-     * Creates a new {@code WebDriver} instance based on the provided browser name.
+     * Creates a new {@code WebDriver} instance based on the provided browser name and options.
      *
-     * <p>This method retrieves the appropriate {@code WebDriver} class by dynamically identifying
-     * the browser configuration from the list of installed browsers provided by the {@code BrowserDetector}.
-     * The method uses a stream to filter through the list of available browsers and matches the one
-     * that corresponds to the specified {@code driverName}. If a match is found, the associated {@code WebDriver}
-     * class is instantiated using reflection, with exception handling managed by Lombok's {@code @SneakyThrows} annotation.</p>
+     * <p>This method dynamically identifies the appropriate {@code WebDriver} class based on the
+     * specified {@code driverName}. It then instantiates the driver using the provided
+     * {@link AbstractDriverOptions} to configure the browser instance.</p>
      *
-     * <p>If no browser matches the provided {@code driverName}, the method throws a
+     * <p>Before instantiation, the method checks that the provided {@code AbstractDriverOptions} instance
+     * is compatible with the {@code WebDriver} being created. Compatibility is determined by checking if the
+     * {@code browserName} from the options partially matches the provided {@code driverName}. If the options
+     * are not compatible with the specified browser, a {@code WebDriverInitializationException} is thrown.</p>
+     *
+     * <p>If no installed browser matches the provided {@code driverName}, the method throws a
      * {@code WebDriverInitializationException} indicating that the specified browser is either
      * unsupported or unavailable on the system.</p>
      *
-     * <p>Key steps in this method include:
-     * <ul>
-     *     <li>Using the {@code BrowserDetector} to retrieve a list of installed browsers.</li>
-     *     <li>Filtering the list to find a browser that matches the given {@code driverName}, ignoring case.</li>
-     *     <li>Instantiating the corresponding {@code WebDriver} class using the {@code BrowserDetector}.</li>
-     *     <li>Handling reflection-related exceptions using the {@code @SneakyThrows} annotation to avoid explicit try-catch blocks.</li>
-     * </ul>
-     *
      * @param driverName the name of the browser (e.g., "chrome", "firefox", "edge").
+     * @param options    the {@link AbstractDriverOptions} used to configure the {@code WebDriver} instance.
      * @return a new instance of the corresponding {@code WebDriver} for the specified browser.
      * @throws WebDriverInitializationException if the specified browser is unsupported or unavailable,
      *                                          or if the {@code WebDriver} instance cannot be created.
      */
     @Synchronized
     public WebDriver createWebDriver(String driverName, AbstractDriverOptions<?> options) throws WebDriverInitializationException {
+        // Check if the provided options are compatible with the WebDriver
+        Preconditions.checkArgument(
+                StringUtils.containsIgnoreCase(options.getBrowserName(), driverName),
+                "Provided options (%s) are not compatible with the %s driver, expected options for %s.",
+                options.getClass().getSimpleName(), driverName, options.getBrowserName()
+        );
 
+        // Instantiate the WebDriver using the provided options
         return browserDetector.getInstalledBrowsers().stream()
                 .filter(browser -> browser.name().equalsIgnoreCase(driverName))
                 .findFirst()
