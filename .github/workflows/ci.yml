@@ -13,19 +13,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Qodana
-        uses: JetBrains/qodana-action@v2024.1
-        with:
-          token: ${{ secrets.QODANA_TOKEN }}
-
-      - name: Run Qodana Scan
-        run: qodana scan --show-report
-
       - name: Set up JDK 17
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.jdk }}
           distribution: 'temurin'
+
+      - name: Install Qodana
+        run: |
+          curl -sS https://get.jetbrains.com/qodana/installer.sh | bash
+
+      - name: Run Qodana Scan
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+        run: qodana scan --show-report
 
       - name: Install Homebrew dependencies
         run: |
