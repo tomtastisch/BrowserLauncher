@@ -7,7 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.exception.WebDriverInitializationException;
+import org.browser.automation.utils.DriverUtils;
+import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.AbstractDriverOptions;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Objects;
@@ -89,11 +92,17 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      */
     @Synchronized
     public WebDriver getOrCreateDriver(String driverName) throws WebDriverInitializationException {
+        return getOrCreateDriver(driverName, new MutableCapabilities());
+    }
+
+    public WebDriver getOrCreateDriver(String driverName, MutableCapabilities capabilities) throws WebDriverInitializationException {
         // Check if existing in the cache
         WebDriver driver = getWebDriverCache().getDriverByName(driverName);
 
         if (Objects.isNull(driver)) {
-            driver = createWebDriver(driverName);
+            AbstractDriverOptions<?> options = DriverUtils.createOptionsInstance(driverName, capabilities);
+
+            driver = createWebDriver(driverName, options);
             getWebDriverCache().addDriver(driver);
         }
 
@@ -127,11 +136,12 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
      *                                          or if the {@code WebDriver} instance cannot be created.
      */
     @Synchronized
-    public WebDriver createWebDriver(String driverName) throws WebDriverInitializationException {
+    public WebDriver createWebDriver(String driverName, AbstractDriverOptions<?> options) throws WebDriverInitializationException {
+
         return browserDetector.getInstalledBrowsers().stream()
                 .filter(browser -> browser.name().equalsIgnoreCase(driverName))
                 .findFirst()
-                .map(browser -> browserDetector.instantiateDriver(browser.driverClass()))
+                .map(browser -> browserDetector.instantiateDriver(browser.driverClass(), options))
                 .orElseThrow(() -> new WebDriverInitializationException("Unsupported or unavailable browser: " + driverName));
     }
 }

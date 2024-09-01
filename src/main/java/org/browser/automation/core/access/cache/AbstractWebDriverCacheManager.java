@@ -8,7 +8,7 @@ import org.browser.automation.core.annotation.CacheLock.LockLevel;
 import org.browser.automation.core.annotation.ResourceKey;
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
 import org.browser.automation.exception.WebDriverInitializationException;
-import org.browser.automation.utils.DriverCacheUtils;
+import org.browser.automation.utils.DriverUtils;
 import org.openqa.selenium.WebDriver;
 
 import java.util.ArrayList;
@@ -86,7 +86,7 @@ public abstract class AbstractWebDriverCacheManager implements WebDriverCacheMan
     @Override
     @CacheLock(level = LockLevel.RESOURCE)
     public boolean isDriverCachedBySessionId(WebDriver driver) {
-        return isDriverCachedBySessionId(DriverCacheUtils.getSessionId(webDriverCache, driver));
+        return isDriverCachedBySessionId(DriverUtils.getSessionId(webDriverCache, driver));
     }
 
     /**

@@ -7,9 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.browser.automation.utils.DriverCacheUtils;
+import org.browser.automation.utils.DriverUtils;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -128,7 +127,7 @@ public class WebDriverCache {
      * @param driver the {@link WebDriver} instance to cache.
      */
     public void addDriver(@NonNull WebDriver driver) {
-        driverCache.computeIfAbsent(DriverCacheUtils.getSessionId(driver), k -> driver);
+        driverCache.putIfAbsent(DriverUtils.getSessionId(driver), driver);
     }
 
     /**
@@ -141,7 +140,7 @@ public class WebDriverCache {
      */
     public WebDriver getDriverByName(@NonNull String driverName) {
         return driverCache.values().stream()
-                .filter(driver -> ((RemoteWebDriver) driver).getCapabilities().getBrowserName().equalsIgnoreCase(driverName))
+                .filter(driver -> DriverUtils.getBrowserName(driver).equalsIgnoreCase(driverName))
                 .findFirst()
                 .orElse(null);
     }
@@ -157,7 +156,7 @@ public class WebDriverCache {
     }
 
     public String getSessionId(@NonNull WebDriver driver) {
-        return DriverCacheUtils.getSessionId(driver);
+        return DriverUtils.getSessionId(driver);
     }
 
     /**
@@ -168,7 +167,7 @@ public class WebDriverCache {
      * @return the session ID of the removed {@link WebDriver} instance.
      */
     public String removeDriver(@NonNull WebDriver driver) {
-        return removeDriver(DriverCacheUtils.getSessionId(driver));
+        return removeDriver(DriverUtils.getSessionId(driver));
     }
 
     /**

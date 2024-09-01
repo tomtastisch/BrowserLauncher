@@ -16,10 +16,13 @@ import org.browser.automation.exception.WebdriverNotFoundException;
 import org.browser.automation.utils.OSUtils;
 import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriver.Options;
+import org.openqa.selenium.remote.AbstractDriverOptions;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -127,7 +130,7 @@ public class BrowserDetector {
 
     public String getDefaultBrowserName(boolean useFallBackBrowser) {
         BrowserInfo defBrowser = new BrowserInfo("","", null);
-        return getDefaultBrowserInfo(true).orElseGet(() -> defBrowser).name();
+        return getDefaultBrowserInfo(useFallBackBrowser).orElse(defBrowser).name();
     }
 
     /**
@@ -366,15 +369,29 @@ public class BrowserDetector {
     }
 
     /**
-     * Instantiates the WebDriver based on the provided driver class.
-     * The method dynamically creates an instance of the WebDriver using reflection.
+     * Instantiates the WebDriver based on the provided driver class and options.
+     * The method dynamically creates an instance of the WebDriver using reflection,
+     * attempting to use a constructor that accepts an {@code Options} parameter.
      *
-     * @param driverClass the {@code Class} of the WebDriver to instantiate
-     * @return an instance of the specified WebDriver
+     * <p>If the specified {@code driverClass} has a constructor that accepts an {@code Options} object,
+     * it will be used to instantiate the WebDriver. If no such constructor exists, the method falls back
+     * to using the default no-argument constructor.</p>
+     *
+     * @param driverClass the {@code Class} of the WebDriver to instantiate.
+     * @param options     the {@code Options} to be passed to the WebDriver's constructor, if applicable.
+     * @return an instance of the specified WebDriver.
      */
     @Synchronized
     @SneakyThrows
-    protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass) {
-        return ConstructorUtils.invokeConstructor(driverClass);
+    protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass, AbstractDriverOptions<?> options) {
+        WebDriver driver;
+
+        try { // Attempt to use the constructor that accepts Options
+            driver = driverClass.getConstructor(options.getClass()).newInstance(options);
+        } catch (NoSuchMethodException e) {
+            // Fallback to the default no-argument constructor if the Options constructor doesn't exist
+            driver = ConstructorUtils.invokeConstructor(driverClass);
+        }
+        return driver;
     }
 }
