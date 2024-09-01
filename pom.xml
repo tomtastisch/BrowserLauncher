@@ -79,7 +79,7 @@
             <exclusions>
                 <exclusion>
                     <groupId>org.seleniumhq.selenium</groupId>
-                    <artifactId>selenium-devtools-v119</artifactId>
+                    <artifactId>selenium-devtools-v128</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

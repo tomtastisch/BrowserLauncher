@@ -31,6 +31,6 @@ class MainClass {
         List<WebDriver> drivers = launcher.validateAndExecute();
 
         // Output and close
-        drivers.stream().peek(driver -> log.info(driver.toString())).forEach(WebDriver::quit);
+        drivers.forEach(driver -> log.info(driver.toString()));
     }
 }

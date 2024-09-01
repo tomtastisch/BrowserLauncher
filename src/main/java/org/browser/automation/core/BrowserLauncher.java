@@ -2,10 +2,7 @@ package org.browser.automation.core;
 
 import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.SneakyThrows;
-import lombok.Synchronized;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.bytebuddy.matcher.ElementMatchers;
 import org.apache.commons.lang3.ObjectUtils;
@@ -75,6 +72,7 @@ public class BrowserLauncher {
     /**
      * The {@link BrowserManager} instance responsible for managing and retrieving {@link WebDriver} instances.
      */
+    @Getter(AccessLevel.NONE)
     private BrowserManager manager;
 
     /**
@@ -183,7 +181,7 @@ public class BrowserLauncher {
     @Synchronized
     @SneakyThrows
     private WebDriver open(String browserName, String url, boolean useNewWindow) {
-        boolean isBrowserNotExists = !getManager().isDriverCachedByName(browserName);
+        boolean isBrowserNotExists = !manager.isDriverCachedByName(browserName);
         return open(browserName, url, (isBrowserNotExists && useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
     }
 
