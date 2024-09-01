@@ -1,10 +1,10 @@
-name: Java CI with Ubuntu
+name: Java CI with macOS
 
 on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     strategy:
       matrix:
         jdk: [17]
@@ -19,23 +19,17 @@ jobs:
           java-version: ${{ matrix.jdk }}
           distribution: 'temurin'
 
-      # Füge einen Schritt hinzu, um den Inhalt des Verzeichnisses zu überprüfen
-      - name: List files in working directory
-        run: ls -R
-
-      # Führe den Qodana Scan durch
-      - name: Run Qodana Scan
-        env:
-          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+      - name: Install Homebrew dependencies
         run: |
-          docker run --rm -e QODANA_TOKEN=$QODANA_TOKEN -v $(pwd):/data jetbrains/qodana-jvm --show-report
+          brew update
+          brew install defaultbrowser
 
       - name: Build and compile the project with debug output
         run: |
-          mvn clean package -X > build-debug.log || true
+          mvn clean package -X > build-debug.log || true 
 
       - name: Display build log
-        run: cat build-debug.log
+        run: cat build-debug.log  # Zeigen Sie die Debug-Ausgabe zur Fehlersuche an.
 
       - name: Set execute permissions for test script
         run: chmod +x ./scripts/run_tests.sh
