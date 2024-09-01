@@ -24,6 +24,9 @@ jobs:
           brew update
           brew install defaultbrowser
 
+      - name: Enable Safari Remote Automation
+        run: sudo /usr/bin/safaridriver --enable
+
       - name: Build and compile the project with debug output
         run: |
           mvn clean package -X > build-debug.log || true 

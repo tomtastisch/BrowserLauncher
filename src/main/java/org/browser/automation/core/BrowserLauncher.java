@@ -121,29 +121,6 @@ public class BrowserLauncher {
     private Map<String, MutableCapabilities> options;
 
     /**
-     * The main method demonstrating how to instantiate and use the {@code BrowserLauncher} class.
-     * It configures the browser operations and then executes them.
-     *
-     * @param args command-line arguments (not used).
-     */
-    public static void main(String[] args) throws EssentialFieldsNotSetException, NoBrowserConfiguredException {
-
-        BrowserLauncher launcher = BrowserLauncher.builder()
-                .withDefaultBrowser()  // Set the default browser to be used
-                .withDefaultOptions()
-                .urls(List.of("https://example.com", "https://www.google.com"))  // Define the URLs to be opened
-                .withNewBrowserManager()  // Use a new BrowserManager instance
-                .autoCleanUp()  // Enable automatic cleanup
-                .build();  // useNewWindow defaults to true
-
-        // Execute the configured browser operations
-        List<WebDriver> drivers = launcher.validateAndExecute();
-
-        // Output and close
-        drivers.forEach(System.out::println);
-    }
-
-    /**
      * Validates the required fields and then executes the browser operations by opening the specified URLs
      * in the configured browsers. This method should be used when you want to ensure that all required fields
      * are set before performing any browser operations.
