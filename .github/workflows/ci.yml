@@ -10,8 +10,12 @@ jobs:
         jdk: [17]
       max-parallel: 1
     steps:
-      - name: Check out the repository
+      - name: Checkout code
         uses: actions/checkout@v2
+      - name: Run Qodana
+        run: |
+          export QODANA_TOKEN=${{ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9qZWN0IjoiQWJydkQiLCJvcmdhbml6YXRpb24iOiJBREJ3aiIsInRva2VuIjoicDVSZFAifQ.cb2KBjy3nONzJIxu1_Mpiof1GEi5jas4WTZzHhqKHv0 }}
+          qodana scan
 
       - name: Set up JDK 17
         uses: actions/setup-java@v2
