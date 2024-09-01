@@ -18,13 +18,12 @@ class MainClass {
      * @param args command-line arguments (not used).
      */
     public static void main(String[] args) throws EssentialFieldsNotSetException, NoBrowserConfiguredException {
-        /*
+
         BrowserLauncher launcher = BrowserLauncher.builder()
                 .withInstalledBrowsers()  // Set the default browser to be used
                 .withDefaultOptions()
                 .urls(List.of("https://example.com", "https://www.google.com"))  // Define the URLs to be opened
                 .withNewBrowserManager()  // Use a new BrowserManager instance
-                .autoCleanUp()  // Enable automatic cleanup
                 .build();  // useNewWindow defaults to true
 
         // Execute the configured browser operations
@@ -32,7 +31,7 @@ class MainClass {
 
         // Output and close
         drivers.forEach(driver -> log.info(driver.toString()));
-         */
+
         System.out.println("TEST");
     }
 }
