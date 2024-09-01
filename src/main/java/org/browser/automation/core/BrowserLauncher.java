@@ -1,5 +1,6 @@
 package org.browser.automation.core;
 
+import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
 import lombok.Builder;
 import lombok.Getter;
@@ -48,7 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <pre>
  * BrowserLauncher launcher = BrowserLauncher.builder()
  *     .browsers(List.of("Chrome", "Firefox"))
- *     .urls(List.of("https://example.com", "https://another-example.com"))
+ *     .urls(List.of("<a href="https://example.com">...</a>", "<a href="https://another-example.com">...</a>"))
  *     .build(); // useNewWindow defaults to true
  *
  * launcher.execute();
@@ -323,6 +324,47 @@ public class BrowserLauncher {
          */
         public BrowserLauncherBuilder withDefaultBrowser() {
             this.browsers = Collections.singletonList(DETECTOR.getDefaultBrowserName(true));
+            return this;
+        }
+
+
+        /**
+         * Configures the {@link BrowserLauncherBuilder} to use all browsers detected on the system.
+         * This method retrieves the list of installed browsers using the {@link BrowserDetector},
+         * and sets it as the list of browsers to be used by the {@link BrowserLauncher}.
+         *
+         * <p>This method is useful when you want to run tests or perform operations across all available
+         * browsers on the system, ensuring broad coverage and compatibility.</p>
+         *
+         * <p>Example usage:
+         * <pre>
+         * BrowserLauncher launcher = BrowserLauncher.builder()
+         *     .withInstalledBrowsers()
+         *     .withDefaultOptions()
+         *     .build();
+         * launcher.execute();
+         * </pre>
+         *
+         * <p><b>Key Implementation Details:</b></p>
+         * <ul>
+         *   <li>Retrieves the list of installed browsers using the {@link BrowserDetector#getInstalledBrowsers()} method.</li>
+         *   <li>Maps the retrieved list of {@link BrowserDetector.BrowserInfo} objects to their names using the {@code name()} method.</li>
+         *   <li>Stores the list of browser names in the {@code browsers} field of the {@link BrowserLauncherBuilder}.</li>
+         * </ul>
+         *
+         * <p><b>Advantages of this Method:</b></p>
+         * <ul>
+         *   <li>Allows for easy configuration of the {@link BrowserLauncher} to run on all detected browsers without manual specification.</li>
+         *   <li>Ensures that the {@link BrowserLauncher} will attempt to operate on every available browser, maximizing test coverage.</li>
+         *   <li>Simple and efficient, using Java Streams to process the list of browsers.</li>
+         * </ul>
+         *
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        public BrowserLauncherBuilder withInstalledBrowsers() {
+            this.browsers = DETECTOR.getInstalledBrowsers().stream()
+                    .map(BrowserDetector.BrowserInfo::name)
+                    .toList();
             return this;
         }
 
