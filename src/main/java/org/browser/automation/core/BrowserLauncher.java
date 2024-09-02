@@ -27,6 +27,9 @@ import java.lang.ref.Cleaner;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The {@code BrowserLauncher} class provides a high-level API for managing browser operations such as opening new windows or tabs,
@@ -316,7 +319,7 @@ public class BrowserLauncher {
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
         public BrowserLauncherBuilder withDefaultBrowser() throws BrowserManagerNotInitializedException {
-            if(Objects.isNull(manager))
+            if (Objects.isNull(manager))
                 throw new BrowserManagerNotInitializedException();
 
             this.browsers = Collections.singletonList(manager.getBrowserDetector().getDefaultBrowserName(true));
@@ -359,7 +362,7 @@ public class BrowserLauncher {
          */
         public BrowserLauncherBuilder withInstalledBrowsers() throws BrowserManagerNotInitializedException {
 
-            if(Objects.isNull(manager))
+            if (Objects.isNull(manager))
                 throw new BrowserManagerNotInitializedException();
 
             this.browsers = manager.getBrowserDetector().getInstalledBrowsers()
@@ -481,20 +484,28 @@ public class BrowserLauncher {
 
         /**
          * Enables automatic cleanup for the {@link BrowserLauncher}. This method registers the cleanup action
-         * with the {@link Cleaner} to ensure that when the {@link BrowserLauncher} instance is no longer referenced,
-         * all associated {@link WebDriver} instances are properly closed.
+         * with the {@link Runtime} shutdown hook to ensure that when the {@link BrowserLauncher} instance is no longer referenced,
+         * all associated {@link WebDriver} instances are properly closed using an ExecutorService.
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
         public BrowserLauncherBuilder autoCleanUp() {
-            // Optionale manuelle Bereinigung
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                if (Objects.nonNull(manager)) {
-                    manager.clearAllDrivers();
-                    log.info("Shutdown hook closed all WebDriver instances.");
-                }
-            }));
+            if (manager != null) {
+                ExecutorService executor = Executors.newSingleThreadExecutor();
 
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    executor.submit(manager::clearAllDrivers);
+                    executor.shutdown();
+                    try {
+                        if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                            executor.shutdownNow();
+                        }
+                    } catch (InterruptedException e) {
+                        executor.shutdownNow();
+                        Thread.currentThread().interrupt();
+                    }
+                }));
+            }
             return this;
         }
 

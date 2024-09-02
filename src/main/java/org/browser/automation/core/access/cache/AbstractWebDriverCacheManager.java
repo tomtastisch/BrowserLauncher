@@ -2,6 +2,7 @@ package org.browser.automation.core.access.cache;
 
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.annotation.CacheLock;
 import org.browser.automation.core.annotation.CacheLock.LockLevel;
@@ -139,6 +140,7 @@ public abstract class AbstractWebDriverCacheManager implements WebDriverCacheMan
      * total initially cached instances.</p>
      */
     @Override
+    @Synchronized
     @CacheLock(level = LockLevel.GLOBAL)
     public void clearAllDrivers() {
         int initialSize = webDriverCache.getDriverCacheContent().size();
