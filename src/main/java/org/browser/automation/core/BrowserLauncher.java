@@ -1,6 +1,5 @@
 package org.browser.automation.core;
 
-import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +11,7 @@ import org.browser.automation.core.access.cache.functional.ConfigInvocationHandl
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
 import org.browser.automation.core.annotation.Essential;
 import org.browser.automation.core.annotation.handler.LockInvocationHandler;
+import org.browser.automation.exception.BrowserManagerNotInitializedException;
 import org.browser.automation.exception.EssentialFieldsNotSetException;
 import org.browser.automation.exception.NoBrowserConfiguredException;
 import org.browser.automation.exception.WebDriverInitializationException;
@@ -63,7 +63,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Builder(builderClassName = "BrowserLauncherBuilder", toBuilder = true)
 public class BrowserLauncher {
 
-    private static final BrowserDetector DETECTOR = new BrowserDetector();
     private static final Cleaner cleaner = Cleaner.create();
 
     @Builder.Default
@@ -76,13 +75,14 @@ public class BrowserLauncher {
     private BrowserManager manager;
 
     /**
-     * Determines whether new windows should be opened for each URL.
-     * This field defaults to {@code true}, meaning that by default, a new window will be opened for the first URL,
-     * and subsequent URLs will open in new tabs in the same window.
-     * If {@code false}, the URLs will open in new tabs within an existing browser window.
+     * Legt fest, ob für jede URL neue Fenster geöffnet werden sollen.
+     * Dieser Wert ist standardmäßig auf {@code false} gesetzt, was bedeutet, dass die erste URL in einem neuen Fenster geöffnet wird
+     * und nachfolgende URLs in neuen Tabs innerhalb desselben Fensters geöffnet werden.
+     * Wenn {@code false}, werden alle URLs in neuen Tabs innerhalb eines bestehenden Browserfensters geöffnet.
+     * Wenn {@code true}, wird jede URL in einem eigenen neuen Fenster geöffnet.
      */
     @Builder.Default
-    private boolean useNewWindow = true;
+    private boolean useNewWindow = false;
 
     /**
      * A list of browser names (e.g., "Chrome", "Firefox") that will be used to open the URLs.
@@ -116,7 +116,9 @@ public class BrowserLauncher {
      * <p>The map is initialized as a {@link ConcurrentHashMap} to ensure thread safety
      * when multiple threads access or modify the map concurrently.
      */
-    private Map<String, MutableCapabilities> options;
+    @Getter(AccessLevel.PROTECTED)
+    @Builder.Default
+    protected Map<String, MutableCapabilities> options = new ConcurrentHashMap<>();
 
     /**
      * Validates the required fields and then executes the browser operations by opening the specified URLs
@@ -278,6 +280,22 @@ public class BrowserLauncher {
     public static class BrowserLauncherBuilder {
 
         /**
+         * A temporary map used to store browser-specific {@link MutableCapabilities} options
+         * before they are added to the main {@code options} map of the {@link BrowserLauncherBuilder}.
+         *
+         * <p>This map holds the capabilities that are set via the {@link #withOptions(String, MutableCapabilities)} method.
+         * Once options are added to this map, they are transferred to the main {@code options} map using
+         * the {@link #options(Map)} method, which integrates them into the builder's configuration.
+         *
+         * <p>The use of this intermediate map allows for efficient option management, ensuring that capabilities
+         * for each browser are stored and handled correctly before being finalized in the builder.
+         *
+         * <p>This map is initialized as a {@link ConcurrentHashMap} to ensure thread safety when multiple
+         * threads access or modify the map concurrently.
+         */
+        Map<String, MutableCapabilities> innerOptions = new ConcurrentHashMap<>();
+
+        /**
          * Configures the builder to use the default browser detected on the system.
          * <p>
          * This method uses the {@link BrowserDetector#getDefaultBrowserName(boolean)} method to automatically detect
@@ -297,8 +315,11 @@ public class BrowserLauncher {
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
-        public BrowserLauncherBuilder withDefaultBrowser() {
-            this.browsers = Collections.singletonList(DETECTOR.getDefaultBrowserName(true));
+        public BrowserLauncherBuilder withDefaultBrowser() throws BrowserManagerNotInitializedException {
+            if(Objects.isNull(manager))
+                throw new BrowserManagerNotInitializedException();
+
+            this.browsers = Collections.singletonList(manager.getBrowserDetector().getDefaultBrowserName(true));
             return this;
         }
 
@@ -336,10 +357,15 @@ public class BrowserLauncher {
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
-        public BrowserLauncherBuilder withInstalledBrowsers() {
-            this.browsers = DETECTOR.getInstalledBrowsers().stream()
-                    .map(BrowserDetector.BrowserInfo::name)
+        public BrowserLauncherBuilder withInstalledBrowsers() throws BrowserManagerNotInitializedException {
+
+            if(Objects.isNull(manager))
+                throw new BrowserManagerNotInitializedException();
+
+            this.browsers = manager.getBrowserDetector().getInstalledBrowsers()
+                    .stream().map(BrowserDetector.BrowserInfo::name)
                     .toList();
+
             return this;
         }
 
@@ -367,11 +393,32 @@ public class BrowserLauncher {
          */
         @SneakyThrows
         public BrowserLauncherBuilder withNewBrowserManager() {
-            this.manager = ByteBuddyUtils.createInstance(
+            return withNewBrowserManager(ByteBuddyUtils.createInstance(
                     BrowserManager.class,
                     LockInvocationHandler.class,
                     ElementMatchers.isDeclaredBy(WebDriverCacheManager.class)
-            );
+            ));
+        }
+
+        /**
+         * Configures the builder to use a new {@link BrowserManager} instance.
+         * <p>
+         * This overloaded method allows the caller to specify an existing {@link BrowserManager} instance,
+         * rather than creating a new one dynamically. This can be useful in scenarios where a pre-configured
+         * or mock {@link BrowserManager} is available and should be used instead of generating a new instance.
+         * <p>
+         * The provided {@link BrowserManager} instance is assigned to the {@code manager} field of this builder,
+         * replacing any previously set instance. Once set, this instance will be used by the {@link BrowserLauncher}
+         * for managing browser operations.
+         * <p>
+         * Note: If this method is used, ensure that the {@link BrowserManager} instance is properly configured before
+         * invoking this method, as it will directly impact the behavior of the {@link BrowserLauncher}.
+         *
+         * @param browserManager the {@link BrowserManager} instance to be used by the builder.
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        public BrowserLauncherBuilder withNewBrowserManager(BrowserManager browserManager) {
+            this.manager = browserManager;
             return this;
         }
 
@@ -427,11 +474,27 @@ public class BrowserLauncher {
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
         public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities) {
-            if (Objects.isNull(options)) {
-                options = new ConcurrentHashMap<>();
-            }
+            innerOptions.putIfAbsent(browserName, capabilities);
+            options(innerOptions);
+            return this;
+        }
 
-            this.options.putIfAbsent(browserName, capabilities);
+        /**
+         * Enables automatic cleanup for the {@link BrowserLauncher}. This method registers the cleanup action
+         * with the {@link Cleaner} to ensure that when the {@link BrowserLauncher} instance is no longer referenced,
+         * all associated {@link WebDriver} instances are properly closed.
+         *
+         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         */
+        public BrowserLauncherBuilder autoCleanUp() {
+            // Optionale manuelle Bereinigung
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (Objects.nonNull(manager)) {
+                    manager.clearAllDrivers();
+                    log.info("Shutdown hook closed all WebDriver instances.");
+                }
+            }));
+
             return this;
         }
 
@@ -459,23 +522,6 @@ public class BrowserLauncher {
                             .or(ElementMatchers.named("addPreference"))
                             .or(ElementMatchers.named("setCapability"))
             );
-        }
-
-        /**
-         * Enables automatic cleanup for the {@link BrowserLauncher}. This method registers the cleanup action
-         * with the {@link Cleaner} to ensure that when the {@link BrowserLauncher} instance is no longer referenced,
-         * all associated {@link WebDriver} instances are properly closed.
-         *
-         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
-         */
-        public BrowserLauncherBuilder autoCleanUp() {
-            cleaner.register(this.manager, () -> {
-                if (Objects.nonNull(this.manager)) {
-                    this.manager.clearAllDrivers();
-                    log.info("Automatically closed all WebDriver instances.");
-                }
-            });
-            return this;
         }
     }
 }
