@@ -32,14 +32,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The {@code BrowserLauncher} class provides a high-level API for managing browser operations such as opening new windows or tabs,
- * and handling multiple links across different browsers. It utilizes the {@link BrowserManager} to manage and retrieve instances of
- * {@link WebDriver}, ensuring that browser operations are executed in a controlled and orderly manner.
+ * The {@code BrowserLauncher} class provides a high-level API for managing browser operations such as opening new
+ * windows or tabs, and handling multiple links across different browsers. It utilizes the {@link BrowserManager} to
+ * manage and retrieve instances of {@link WebDriver}, ensuring that browser operations are executed in a controlled
+ * and orderly manner.
  *
  * <p>Key functionalities provided by this class include:
  * <ul>
  *     <li>{@code open}: Opens a URL in a new browser tab or window depending on the specified configuration.</li>
- *     <li>{@code execute}: Executes the browser operations that have been set up, opening the specified URLs in the designated browsers.</li>
+ *     <li>{@code execute}: Executes the browser operations that have been set up, opening the specified URLs in the
+ *          designated browsers.</li>
  * </ul>
  *
  * <p>Unlike previous versions, the {@code useNewWindow} parameter is no longer mandatory to be set explicitly.
@@ -78,11 +80,11 @@ public class BrowserLauncher {
     private BrowserManager manager;
 
     /**
-     * Legt fest, ob für jede URL neue Fenster geöffnet werden sollen.
-     * Dieser Wert ist standardmäßig auf {@code false} gesetzt, was bedeutet, dass die erste URL in einem neuen Fenster geöffnet wird
-     * und nachfolgende URLs in neuen Tabs innerhalb desselben Fensters geöffnet werden.
-     * Wenn {@code false}, werden alle URLs in neuen Tabs innerhalb eines bestehenden Browserfensters geöffnet.
-     * Wenn {@code true}, wird jede URL in einem eigenen neuen Fenster geöffnet.
+     * Determines whether new windows should be opened for each URL.
+     * This value defaults to {@code false}, meaning the first URL will be opened in a new window,
+     * and subsequent URLs will open in new tabs within the same window.
+     * If {@code false}, all URLs will open in new tabs within an existing browser window.
+     * If {@code true}, each URL will open in its own new window.
      */
     @Builder.Default
     private boolean useNewWindow = false;
@@ -150,7 +152,8 @@ public class BrowserLauncher {
     /**
      * Executes the browser operations that have been set up by opening the specified URLs in the designated browsers.
      * After opening the URLs, any comparisons that have been configured will be executed.
-     * This method must be called after setting up the browser context to ensure that the necessary browser operations are performed.
+     * This method must be called after setting up the browser context to ensure that the necessary browser operations
+     * are performed.
      * <br>
      * <b>Note:</b> This method is considered <b>unsafe</b> for external use, meaning that it should be used with caution
      * as it assumes that all necessary validations have been completed prior to its invocation. It is recommended to use
@@ -229,7 +232,9 @@ public class BrowserLauncher {
     private WebDriver handleBrowserOperation(String driverName, String operationType) throws WebDriverInitializationException {
         log.info("Performing '{}' operation for driver: {}", operationType, driverName);
         MutableCapabilities capabilities = options.getOrDefault(driverName.toLowerCase(), new MutableCapabilities());
-        return manager.getOrCreateDriver(driverName, capabilities);  // Retrieves or creates a new WebDriver instance for the specified browser
+
+        // Retrieves or creates a new WebDriver instance for the specified browser
+        return manager.getOrCreateDriver(driverName, capabilities);
     }
 
     /**
@@ -243,7 +248,8 @@ public class BrowserLauncher {
                 .toArray(String[]::new), ",");
 
         if (ObjectUtils.isNotEmpty(missingFields)) {
-            throw new EssentialFieldsNotSetException(missingFields);  // Throws an exception if essential fields are missing
+            // Throws an exception if essential fields are missing
+            throw new EssentialFieldsNotSetException(missingFields);
         }
     }
 
@@ -256,7 +262,8 @@ public class BrowserLauncher {
      */
     @SneakyThrows
     private Object readField(Field field) {
-        return FieldUtils.readField(field, this, true);  // Uses reflection to read the value of the specified field
+        // Uses reflection to read the value of the specified field
+        return FieldUtils.readField(field, this, true);
     }
 
     /**
@@ -353,8 +360,10 @@ public class BrowserLauncher {
          *
          * <p><b>Advantages of this Method:</b></p>
          * <ul>
-         *   <li>Allows for easy configuration of the {@link BrowserLauncher} to run on all detected browsers without manual specification.</li>
-         *   <li>Ensures that the {@link BrowserLauncher} will attempt to operate on every available browser, maximizing test coverage.</li>
+         *   <li>Allows for easy configuration of the {@link BrowserLauncher} to run on all detected browsers
+         *          without manual specification.</li>
+         *   <li>Ensures that the {@link BrowserLauncher} will attempt to operate on every available browser,
+         *          maximizing test coverage.</li>
          *   <li>Simple and efficient, using Java Streams to process the list of browsers.</li>
          * </ul>
          *
@@ -373,7 +382,8 @@ public class BrowserLauncher {
         }
 
         /**
-         * Configures the builder to use a new {@link BrowserManager} instance, dynamically created using ByteBuddy with method interception via {@link LockInvocationHandler}.
+         * Configures the builder to use a new {@link BrowserManager} instance, dynamically created using ByteBuddy
+         * with method interception via {@link LockInvocationHandler}.
          * <p>
          * This method leverages ByteBuddy to dynamically generate a subclass of {@link BrowserManager},
          * which acts as a proxy for method calls. The generated subclass intercepts method calls that are
@@ -389,7 +399,8 @@ public class BrowserLauncher {
          * After the dynamic subclass is created and configured with the {@link LockInvocationHandler},
          * it is instantiated and assigned to the {@code manager} field of this builder.
          * <p>
-         * Note: This method assumes that the browser is already configured via {@link #withDefaultBrowser()} or a similar method.
+         * Note: This method assumes that the browser is already configured via {@link #withDefaultBrowser()}
+         * or a similar method.
          * If no browser has been configured, ensure to set one before calling this method to avoid unexpected behavior.
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
@@ -429,17 +440,19 @@ public class BrowserLauncher {
          * Configures the builder with the default {@link MutableCapabilities} for each browser configured in the {@link BrowserLauncher}.
          * <p>
          * This method loads the default options from a configuration file and sets them for each browser in the builder.
-         * It uses ByteBuddy to dynamically create a proxy for the {@link MutableCapabilities} class, allowing the options to be
-         * configured based on the specific browser. The options are stored in the builder's internal map.
+         * It uses ByteBuddy to dynamically create a proxy for the {@link MutableCapabilities} class, allowing the
+         * options to be configured based on the specific browser. The options are stored in the builder's internal map.
          * <p>
          * If {@link #withOptions(String, MutableCapabilities)} was called before this method, any already
-         * configured capabilities for a browser will not be overwritten. This ensures that manually set options take precedence over default ones.
+         * configured capabilities for a browser will not be overwritten. This ensures that manually set options take
+         * precedence over default ones.
          * <p>
-         * Note: Ensure that at least one browser is configured using {@link #withDefaultBrowser()} or a similar method before
-         * calling this method. Otherwise, a {@link NoBrowserConfiguredException} will be thrown.
+         * Note: Ensure that at least one browser is configured using {@link #withDefaultBrowser()} or a similar
+         * method before calling this method. Otherwise, a {@link NoBrowserConfiguredException} will be thrown.
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
-         * @throws NoBrowserConfiguredException if no browsers have been configured in the current {@link BrowserLauncher} instance.
+         * @throws NoBrowserConfiguredException if no browsers have been configured
+         *      in the current {@link BrowserLauncher} instance.
          */
         public BrowserLauncherBuilder withDefaultOptions() throws NoBrowserConfiguredException {
 
@@ -467,10 +480,12 @@ public class BrowserLauncher {
          * Adds custom {@link MutableCapabilities} for a specified browser.
          * <p>
          * This method allows you to manually configure and add {@link MutableCapabilities} for a specific browser.
-         * It stores the provided capabilities in the builder's internal map of options, where the key is the browser name.
+         * It stores the provided capabilities in the builder's internal map of options, where the key is the browser
+         * name.
          * <p>
          * This method can be used when you need to set specific capabilities that are not covered by the default options.
-         * If this method is called before {@link #withDefaultOptions()}, the manually added capabilities will not be overwritten.
+         * If this method is called before {@link #withDefaultOptions()}, the manually added capabilities will not be
+         * overwritten.
          *
          * @param browserName  the name of the browser for which to set the capabilities.
          * @param capabilities the {@link MutableCapabilities} to set for the specified browser.
@@ -484,8 +499,8 @@ public class BrowserLauncher {
 
         /**
          * Enables automatic cleanup for the {@link BrowserLauncher}. This method registers the cleanup action
-         * with the {@link Runtime} shutdown hook to ensure that when the {@link BrowserLauncher} instance is no longer referenced,
-         * all associated {@link WebDriver} instances are properly closed using an ExecutorService.
+         * with the {@link Runtime} shutdown hook to ensure that when the {@link BrowserLauncher} instance is no
+         * longer referenced, all associated {@link WebDriver} instances are properly closed using an ExecutorService.
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
