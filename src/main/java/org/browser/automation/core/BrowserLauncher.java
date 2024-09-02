@@ -490,7 +490,8 @@ public class BrowserLauncher {
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
         public BrowserLauncherBuilder autoCleanUp() {
-            if (manager != null) {
+
+            Optional.of(this.manager).ifPresent(mngr -> {
                 ExecutorService executor = Executors.newSingleThreadExecutor();
 
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -505,7 +506,7 @@ public class BrowserLauncher {
                         Thread.currentThread().interrupt();
                     }
                 }));
-            }
+            });
             return this;
         }
 
