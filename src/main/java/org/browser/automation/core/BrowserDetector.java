@@ -4,12 +4,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.browser.automation.exception.PackageNotFoundException;
 import org.browser.automation.exception.WebdriverNotFoundException;
@@ -21,6 +23,7 @@ import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -61,11 +64,28 @@ import java.util.stream.Collectors;
 @Getter
 @ThreadSafe
 public class BrowserDetector {
+
+    /**
+     * The {@code Config} object representing the loaded configuration settings for the {@code BrowserDetector}.
+     * This configuration is used to manage various browser-related settings, such as paths to browser executables,
+     * and WebDriver class mappings. The configuration is loaded from the "application.conf" file and is designed
+     * to be thread-safe, ensuring that it can be accessed and modified concurrently without issues.
+     */
     private final Config config;
 
     /**
-     * Cache to store previously resolved {@code WebDriver} classes.
-     * The key is the fully qualified class name (FQCN), and the value is the corresponding {@code WebDriver} class.
+     * The temporary directory path used by {@code WebDriverManager} to store downloaded WebDriver binaries.
+     * This path is located in the system's default temporary directory, as determined by
+     * {@code SystemUtils.getJavaIoTmpDir()}. The purpose of this directory is to cache WebDriver binaries so
+     * that they can be reused across multiple sessions, improving performance by avoiding redundant downloads.
+     */
+    private final String cacheDirectory = new File(SystemUtils.getJavaIoTmpDir(), "webdriver-cache").getAbsolutePath();
+
+    /**
+     * A concurrent cache that stores previously resolved {@code WebDriver} classes, mapped by their fully qualified
+     * class names (FQCN). This cache enhances performance by avoiding repeated reflection scans for the same WebDriver
+     * class. The cache is thread-safe, allowing concurrent access in multithreaded environments without causing
+     * inconsistencies or data corruption.
      */
     private static final Map<String, Class<? extends WebDriver>> cache = new ConcurrentHashMap<>();
 
@@ -368,28 +388,60 @@ public class BrowserDetector {
 
     /**
      * Instantiates the WebDriver based on the provided driver class and options.
-     * The method dynamically creates an instance of the WebDriver using reflection,
-     * attempting to use a constructor that accepts an {@code Options} parameter.
+     * This method dynamically creates an instance of the WebDriver using reflection,
+     * attempting to use a constructor that accepts an {@code AbstractDriverOptions} parameter.
      *
-     * <p>If the specified {@code driverClass} has a constructor that accepts an {@code Options} object,
+     * <p>Before the WebDriver is instantiated, the appropriate WebDriverManager is configured
+     * to ensure that the required WebDriver binaries are available and properly set up. The method
+     * sets a cache path in the system's temporary directory where WebDriver binaries will be stored.</p>
+     *
+     * <p>If the specified {@code driverClass} has a constructor that accepts an {@code AbstractDriverOptions} object,
      * it will be used to instantiate the WebDriver. If no such constructor exists, the method falls back
      * to using the default no-argument constructor.</p>
      *
-     * @param driverClass the {@code Class} of the WebDriver to instantiate.
-     * @param options     the {@code Options} to be passed to the WebDriver's constructor, if applicable.
+     * <p>This method is synchronized to ensure thread safety when instantiating WebDriver instances
+     * in a multi-threaded environment.</p>
+     *
+     * @param driverClass the {@code Class} of the WebDriver to instantiate. This class should extend {@code WebDriver}.
+     * @param options     the {@code AbstractDriverOptions} to be passed to the WebDriver's constructor, if applicable.
      * @return an instance of the specified WebDriver.
+     * @throws RuntimeException if the WebDriver cannot be instantiated.
      */
     @Synchronized
     @SneakyThrows
     protected WebDriver instantiateDriver(Class<? extends WebDriver> driverClass, AbstractDriverOptions<?> options) {
         WebDriver driver;
 
-        try { // Attempt to use the constructor that accepts Options
+        // Start the WebDriverManager for the given driver class, setting up the necessary binaries.
+        startWebDriverManagerFor(driverClass);
+
+        try {
+            // Attempt to use the constructor that accepts Options
             driver = driverClass.getConstructor(options.getClass()).newInstance(options);
         } catch (NoSuchMethodException e) {
             // Fallback to the default no-argument constructor if the Options constructor doesn't exist
             driver = ConstructorUtils.invokeConstructor(driverClass);
         }
         return driver;
+    }
+
+    /**
+     * Configures and starts the appropriate WebDriverManager for the specified driver class.
+     * This method determines the correct WebDriverManager instance dynamically based on the provided
+     * WebDriver class and configures it with a cache path located in the system's temporary directory.
+     *
+     * <p>The WebDriverManager setup ensures that the required WebDriver binaries are available,
+     * downloaded if necessary, and set up correctly. This configuration also supports running
+     * browsers inside Docker containers and forces the download of the WebDriver binaries to ensure
+     * the most up-to-date version is used.</p>
+     *
+     * @param driverClass the {@code Class} of the WebDriver for which the WebDriverManager should be configured.
+     */
+    private void startWebDriverManagerFor(Class<? extends WebDriver> driverClass) {
+        // Configure the WebDriverManager with the cache path and additional options.
+        WebDriverManager.getInstance(driverClass)
+                .cachePath(cacheDirectory)
+                .forceDownload()
+                .setup();
     }
 }

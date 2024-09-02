@@ -1,5 +1,6 @@
 package org.browser.automation.core.access.cache;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.annotation.CacheLock;
@@ -41,6 +42,7 @@ import java.util.Optional;
 @Getter
 public abstract class AbstractWebDriverCacheManager implements WebDriverCacheManager {
 
+    @Getter(AccessLevel.PROTECTED)
     private final WebDriverCache webDriverCache;
 
     /**
