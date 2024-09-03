@@ -1,4 +1,4 @@
-package org.browser.automation.exception;
+package org.browser.automation.exception.browser.url;
 
 import org.browser.automation.exception.base.LocalizedExceptionBase;
 

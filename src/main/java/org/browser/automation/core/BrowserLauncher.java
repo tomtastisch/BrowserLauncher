@@ -11,7 +11,10 @@ import org.browser.automation.core.access.cache.functional.ConfigInvocationHandl
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
 import org.browser.automation.core.annotation.Essential;
 import org.browser.automation.core.annotation.handler.LockInvocationHandler;
-import org.browser.automation.exception.*;
+import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
+import org.browser.automation.exception.browser.NoBrowserConfiguredException;
+import org.browser.automation.exception.browser.driver.WebDriverInitializationException;
+import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
 import org.browser.automation.utils.ByteBuddyUtils;
 import org.browser.automation.utils.DriverUtils;
 import org.browser.automation.utils.OSUtils;
@@ -495,16 +498,16 @@ public class BrowserLauncher {
         /**
          * Validates URLs by checking if they are blacklisted using the full URL match mode.
          * <p>
-         * This method calls {@link #validateURLsBlacklisting(boolean)} with the default parameter {@code matchFullUrl} set to {@code true}.
+         * This method calls {@link #applyBlacklistFilter(boolean)} with the default parameter {@code matchFullUrl} set to {@code true}.
          * It will remove any URLs from the {@code urls} list that are found to be blacklisted.
          * </p>
          *
          * @return a reference to the current {@code BrowserLauncherBuilder} object,
          *         allowing for method chaining.
-         * @see #validateURLsBlacklisting(boolean)
+         * @see #applyBlacklistFilter(boolean)
          */
-        public BrowserLauncherBuilder validateURLsBlacklisting() {
-            return validateURLsBlacklisting(true);
+        public BrowserLauncherBuilder applyBlacklistFilter() {
+            return applyBlacklistFilter(true);
         }
 
         /**
@@ -524,7 +527,7 @@ public class BrowserLauncher {
          * @return a reference to the current {@code BrowserLauncherBuilder} object, allowing for method chaining.
          * @see UrlUtil#isUrlBlacklisted(String, boolean)
          */
-        public BrowserLauncherBuilder validateURLsBlacklisting(boolean matchFullUrl) {
+        public BrowserLauncherBuilder applyBlacklistFilter(boolean matchFullUrl) {
             urls = urls.stream()
                     .filter(url -> !UrlUtil.isUrlBlacklisted(url, matchFullUrl))
                     .peek(url -> log.info("URL '{}' is not blacklisted.", url))

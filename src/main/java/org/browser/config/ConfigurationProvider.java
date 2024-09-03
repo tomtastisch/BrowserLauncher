@@ -6,12 +6,11 @@ import com.typesafe.config.ConfigFactory;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.browser.automation.exception.ConfigFileNotFoundException;
-import org.browser.automation.exception.ConfigKeyNotFoundException;
+import org.browser.automation.exception.config.ConfigFileNotFoundException;
+import org.browser.automation.exception.config.ConfigKeyNotFoundException;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * The {@code ConfigurationProvider} class is responsible for loading and providing

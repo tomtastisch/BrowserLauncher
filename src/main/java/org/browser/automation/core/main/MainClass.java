@@ -2,9 +2,9 @@ package org.browser.automation.core.main;
 
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.BrowserLauncher;
-import org.browser.automation.exception.BrowserManagerNotInitializedException;
-import org.browser.automation.exception.EssentialFieldsNotSetException;
-import org.browser.automation.exception.NoBrowserConfiguredException;
+import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
+import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
+import org.browser.automation.exception.browser.NoBrowserConfiguredException;
 import org.openqa.selenium.WebDriver;
 
 import java.util.List;
@@ -27,7 +27,7 @@ class MainClass {
                         "https://example.com",
                         "https://www.google.com",
                         "https://plantain-elk-b8pt.squarespace.com/api/comment/FlagComment"))  // Define the URLs to be opened
-                .validateURLsBlacklisting()
+                .applyBlacklistFilter()
                 .withDefaultOptions()
                 .autoCleanUp()
                 .build();

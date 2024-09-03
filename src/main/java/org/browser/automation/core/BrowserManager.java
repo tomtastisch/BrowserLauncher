@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
-import org.browser.automation.exception.WebDriverInitializationException;
+import org.browser.automation.exception.browser.driver.WebDriverInitializationException;
 import org.browser.automation.utils.DriverUtils;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;

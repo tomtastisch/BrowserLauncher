@@ -1,4 +1,4 @@
-package org.browser.automation.exception;
+package org.browser.automation.exception.config;
 
 import org.browser.automation.exception.base.LocalizedExceptionBase;
 

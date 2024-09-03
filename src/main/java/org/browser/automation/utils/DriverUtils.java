@@ -5,7 +5,6 @@ import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.browser.automation.core.access.cache.WebDriverCache;
-import org.browser.automation.exception.WebDriverInitializationException;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.AbstractDriverOptions;

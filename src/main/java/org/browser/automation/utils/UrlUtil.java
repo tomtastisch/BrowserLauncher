@@ -6,8 +6,8 @@ import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.fluent.Request;
-import org.browser.automation.exception.InvalidUrlException;
-import org.browser.automation.exception.UrlFetchException;
+import org.browser.automation.exception.browser.url.InvalidUrlException;
+import org.browser.automation.exception.browser.url.UrlFetchException;
 
 import java.util.Arrays;
 import java.util.List;
