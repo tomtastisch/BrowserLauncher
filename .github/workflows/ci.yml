@@ -23,17 +23,31 @@ jobs:
         run: |
           brew update
           brew install defaultbrowser
+          brew install homebrew/cask/safari
           brew upgrade
 
       - name: Enable Safari Remote Automation
         run: sudo /usr/bin/safaridriver --enable
+
+      - name: Check macOS and Safari versions
+        run: |
+          sw_vers
+          /usr/bin/safaridriver --version
+
+      - name: Test SafariDriver Setup
+        run: |
+          echo "Testing SafariDriver..."
+          echo "Open SafariDriver"
+          /usr/bin/safaridriver --enable
+          echo "Create a new Safari session"
+          curl -X POST http://localhost:4444/wd/hub/session -H "Content-Type: application/json" -d '{"capabilities": {"alwaysMatch": {"browserName": "safari"}}}'
 
       - name: Build and compile the project with debug output
         run: |
           mvn clean package -X > build-debug.log || true 
 
       - name: Display build log
-        run: cat build-debug.log  # Zeigen Sie die Debug-Ausgabe zur Fehlersuche an.
+        run: cat build-debug.log
 
       - name: Upload build log
         uses: actions/upload-artifact@v3
