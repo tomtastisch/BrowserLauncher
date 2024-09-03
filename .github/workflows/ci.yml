@@ -23,7 +23,6 @@ jobs:
         run: |
           brew update
           brew install defaultbrowser
-          brew install homebrew/cask/safari
           brew upgrade
 
       - name: Enable Safari Remote Automation
