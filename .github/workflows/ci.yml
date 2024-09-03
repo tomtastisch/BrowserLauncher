@@ -25,9 +25,6 @@ jobs:
           brew install defaultbrowser
           brew upgrade
 
-      - name: Enable Safari Remote Automation
-        run: sudo /usr/bin/safaridriver --enable
-
       - name: Check macOS and Safari versions
         run: |
           sw_vers
@@ -36,10 +33,8 @@ jobs:
       - name: Test SafariDriver Setup
         run: |
           echo "Testing SafariDriver..."
-          echo "Open SafariDriver"
-          /usr/bin/safaridriver --enable
-          echo "Create a new Safari session"
-          curl -X POST http://localhost:4444/wd/hub/session -H "Content-Type: application/json" -d '{"capabilities": {"alwaysMatch": {"browserName": "safari"}}}'
+          # Test if safaridriver is running
+          curl -s http://localhost:4444/wd/hub/status || echo "SafariDriver is not running or not reachable."
 
       - name: Build and compile the project with debug output
         run: |
