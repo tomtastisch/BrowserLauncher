@@ -506,7 +506,7 @@ public class BrowserLauncher {
          */
         public BrowserLauncherBuilder autoCleanUp() {
 
-            if(Objects.nonNull(this.manager)) {
+            Optional.of(this.manager).ifPresent(mngr -> {
                 ExecutorService executor = Executors.newSingleThreadExecutor();
 
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -521,7 +521,7 @@ public class BrowserLauncher {
                         Thread.currentThread().interrupt();
                     }
                 }));
-            }
+            });
             return this;
         }
 
