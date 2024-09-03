@@ -8,7 +8,7 @@ import org.browser.automation.core.annotation.CacheLock;
 import org.browser.automation.core.annotation.CacheLock.LockLevel;
 import org.browser.automation.core.annotation.ResourceKey;
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
-import org.browser.automation.exception.WebDriverInitializationException;
+import org.browser.automation.exception.browser.driver.WebDriverInitializationException;
 import org.browser.automation.utils.DriverUtils;
 import org.openqa.selenium.WebDriver;
 
