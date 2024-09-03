@@ -23,7 +23,11 @@ class MainClass {
         BrowserLauncher launcher = BrowserLauncher.builder()
                 .withNewBrowserManager()
                 .withDefaultBrowser() // Set the default browser to be used
-                .urls(List.of("https://example.com", "https://www.google.com"))  // Define the URLs to be opened
+                .urls(List.of(
+                        "https://example.com",
+                        "https://www.google.com",
+                        "https://plantain-elk-b8pt.squarespace.com/api/comment/FlagComment"))  // Define the URLs to be opened
+                .validateURLsBlacklisting()
                 .withDefaultOptions()
                 .autoCleanUp()
                 .build();
