@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
  * <p>Example usage:
  * <pre>
  * BrowserLauncher launcher = BrowserLauncher.builder()
- *     .browsers(List.of("Chrome", "Firefox"))
+ *     .getDefaultBrowser()
  *     .urls(List.of("<a href="https://example.com">...</a>", "<a href="https://another-example.com">...</a>"))
  *     .build(); // useNewWindow defaults to true
  *
@@ -311,14 +311,16 @@ public class BrowserLauncher {
          * This method uses the {@link BrowserDetector#getDefaultBrowserName(boolean)} method to automatically detect
          * and set the default browser for the system. The method checks the system's configuration to identify the
          * default web browser installed on the user's operating system. If the default browser cannot be determined,
-         * it uses a fallback mechanism to select the first available browser from the list of installed browsers.
+         * it uses a fallback mechanism to select the first available browser from the list of installed browsers,
+         * as indicated by the {@code useFallBackBrowser=true} parameter.
          * <p>
          * The {@code BrowserDetector} class provides the logic to identify the system's default browser by examining
          * system-specific configurations, executing OS commands, and analyzing installed browsers. This detection process
          * is robust and accommodates different operating systems by dynamically adapting to the environment.
          * <p>
-         * If no browsers are installed or detected, this method will still return a valid builder instance, but the
-         * execution of the browser launch operations will fail unless a valid browser is explicitly set before execution.
+         * If no browsers are installed or detected, and the fallback mechanism is triggered, the builder will set the first
+         * available browser from the list of installed browsers as the default. This could result in unexpected behavior if
+         * the chosen fallback browser is not the intended default browser for the user's context.
          * <p>
          * Note: This method should be called before any other method that requires a browser to be set, such as
          * {@link #withDefaultOptions()} or {@link #withNewBrowserManager()}, to avoid {@link NoBrowserConfiguredException}.
@@ -326,10 +328,13 @@ public class BrowserLauncher {
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          */
         public BrowserLauncherBuilder withDefaultBrowser() throws BrowserManagerNotInitializedException {
-            if (Objects.isNull(manager))
+            if (Objects.isNull(manager)) {
                 throw new BrowserManagerNotInitializedException();
+            }
 
-            this.browsers = Collections.singletonList(manager.getBrowserDetector().getDefaultBrowserName(true));
+            this.browsers = Collections.singletonList(manager.getBrowserDetector()
+                    .getDefaultBrowserName(true));
+
             return this;
         }
 
@@ -341,15 +346,6 @@ public class BrowserLauncher {
          *
          * <p>This method is useful when you want to run tests or perform operations across all available
          * browsers on the system, ensuring broad coverage and compatibility.</p>
-         *
-         * <p>Example usage:
-         * <pre>
-         * BrowserLauncher launcher = BrowserLauncher.builder()
-         *     .withInstalledBrowsers()
-         *     .withDefaultOptions()
-         *     .build();
-         * launcher.execute();
-         * </pre>
          *
          * <p><b>Key Implementation Details:</b></p>
          * <ul>
@@ -371,8 +367,9 @@ public class BrowserLauncher {
          */
         public BrowserLauncherBuilder withInstalledBrowsers() throws BrowserManagerNotInitializedException {
 
-            if (Objects.isNull(manager))
+            if (Objects.isNull(manager)) {
                 throw new BrowserManagerNotInitializedException();
+            }
 
             this.browsers = manager.getBrowserDetector().getInstalledBrowsers()
                     .stream().map(BrowserDetector.BrowserInfo::name)
