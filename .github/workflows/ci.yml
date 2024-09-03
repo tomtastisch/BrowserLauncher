@@ -25,15 +25,23 @@ jobs:
           brew install defaultbrowser
           brew upgrade
 
-      - name: Enable Safari Remote Automation
-        run: sudo /usr/bin/safaridriver --enable
+      - name: Check macOS and Safari versions
+        run: |
+          sw_vers
+          /usr/bin/safaridriver --version
+
+      - name: Test SafariDriver Setup
+        run: |
+          echo "Testing SafariDriver..."
+          # Test if safaridriver is running
+          curl -s http://localhost:4444/wd/hub/status || echo "SafariDriver is not running or not reachable."
 
       - name: Build and compile the project with debug output
         run: |
           mvn clean package -X > build-debug.log || true 
 
       - name: Display build log
-        run: cat build-debug.log  # Zeigen Sie die Debug-Ausgabe zur Fehlersuche an.
+        run: cat build-debug.log
 
       - name: Upload build log
         uses: actions/upload-artifact@v3

@@ -11,13 +11,11 @@ import org.browser.automation.core.access.cache.functional.ConfigInvocationHandl
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
 import org.browser.automation.core.annotation.Essential;
 import org.browser.automation.core.annotation.handler.LockInvocationHandler;
-import org.browser.automation.exception.BrowserManagerNotInitializedException;
-import org.browser.automation.exception.EssentialFieldsNotSetException;
-import org.browser.automation.exception.NoBrowserConfiguredException;
-import org.browser.automation.exception.WebDriverInitializationException;
+import org.browser.automation.exception.*;
 import org.browser.automation.utils.ByteBuddyUtils;
 import org.browser.automation.utils.DriverUtils;
 import org.browser.automation.utils.OSUtils;
+import org.browser.automation.utils.UrlUtil;
 import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
@@ -491,6 +489,47 @@ public class BrowserLauncher {
         public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities) {
             innerOptions.putIfAbsent(browserName, capabilities);
             options(innerOptions);
+            return this;
+        }
+
+        /**
+         * Validates URLs by checking if they are blacklisted using the full URL match mode.
+         * <p>
+         * This method calls {@link #validateURLsBlacklisting(boolean)} with the default parameter {@code matchFullUrl} set to {@code true}.
+         * It will remove any URLs from the {@code urls} list that are found to be blacklisted.
+         * </p>
+         *
+         * @return a reference to the current {@code BrowserLauncherBuilder} object,
+         *         allowing for method chaining.
+         * @see #validateURLsBlacklisting(boolean)
+         */
+        public BrowserLauncherBuilder validateURLsBlacklisting() {
+            return validateURLsBlacklisting(true);
+        }
+
+        /**
+         * Validates each URL in the list to determine if it is blacklisted.
+         * <p>
+         * This method filters the list of URLs by checking if each URL is blacklisted using the
+         * {@link UrlUtil#isUrlBlacklisted(String, boolean)} method. The check is based on the value of the
+         * {@code matchFullUrl} parameter, which determines whether to perform a full URL match or just
+         * a base domain match against the blacklist.
+         * </p>
+         * <p>
+         * If a URL is found to be blacklisted, it is removed from the {@code urls} list.
+         * </p>
+         *
+         * @param matchFullUrl if {@code true}, performs a full URL match against the blacklist;
+         *                     if {@code false}, only the base domain of the URL is checked.
+         * @return a reference to the current {@code BrowserLauncherBuilder} object, allowing for method chaining.
+         * @see UrlUtil#isUrlBlacklisted(String, boolean)
+         */
+        public BrowserLauncherBuilder validateURLsBlacklisting(boolean matchFullUrl) {
+            urls = urls.stream()
+                    .filter(url -> !UrlUtil.isUrlBlacklisted(url, matchFullUrl))
+                    .peek(url -> log.info("URL '{}' is not blacklisted.", url))
+                    .toList();
+
             return this;
         }
 
