@@ -26,8 +26,9 @@ class MainClass {
                 .urls(List.of(
                         "https://example.com",
                         "https://www.google.com",
-                        "https://plantain-elk-b8pt.squarespace.com/api/comment/FlagComment"))  // Define the URLs to be opened
-                .applyBlacklistFilter()
+                        // Intended specification of a URL listed as malware to ensure that the filter function works
+                        "https://plantain-elk-b8pt.squarespace.com/api/comment/FlagComment"))
+                .applyBlacklistFilter() // Filter function
                 .withDefaultOptions()
                 .autoCleanUp()
                 .build();
