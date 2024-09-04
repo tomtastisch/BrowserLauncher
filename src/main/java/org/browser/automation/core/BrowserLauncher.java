@@ -2,6 +2,7 @@ package org.browser.automation.core;
 
 import com.typesafe.config.Config;
 import lombok.*;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.bytebuddy.matcher.ElementMatchers;
 import org.apache.commons.lang3.ObjectUtils;
@@ -14,7 +15,6 @@ import org.browser.automation.core.annotation.Essential;
 import org.browser.automation.core.annotation.handler.LockInvocationHandler;
 import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
 import org.browser.automation.exception.browser.NoBrowserConfiguredException;
-import org.browser.automation.exception.browser.driver.WebDriverInitializationException;
 import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
 import org.browser.automation.utils.ByteBuddyUtils;
 import org.browser.automation.utils.DriverUtils;
@@ -87,6 +87,13 @@ public class BrowserLauncher {
      */
     @Builder.Default
     private boolean useNewWindow = false;
+
+    /**
+     * Indicates whether this is the first call to the {@code open} method.
+     * Initialized to {@code true} and used to differentiate between the initial call and subsequent calls.
+     */
+    @Builder.Default
+    private boolean firstCall = true;
 
     /**
      * A list of browser names (e.g., "Chrome", "Firefox") that will be used to open the URLs.
@@ -193,19 +200,26 @@ public class BrowserLauncher {
     }
 
     /**
-     * Opens a link in either a new tab or a new window based on the specified {@code WindowType}.
-     * This method uses the {@code WebDriver}'s {@code switchTo().newWindow} function to create the new browser context.
+     * Opens a link in a new tab or window based on the specified {@code WindowType}.
+     * This method utilizes the {@code WebDriver}'s {@code switchTo().newWindow} function to create a new browser context.
      *
-     * @param browserInfo the name of the {@link WebDriver} instance to be used.
+     * @param browserInfo the {@link WebDriver} instance to be used for this operation.
      * @param link        the URL to be opened in the new tab or window.
-     * @param type        the type of the window, represented by {@link WindowType}.
+     * @param type        the type of the window to open, represented by {@link WindowType}.
      * @return the {@link WebDriver} instance used for the operation.
      */
     @Synchronized
     private WebDriver open(BrowserInfo browserInfo, String link, WindowType type) {
         WebDriver driver = handleBrowserOperation(browserInfo, type);
-        driver.switchTo().newWindow(type);  // Switches to the new window or tab based on the specified WindowType
-        driver.get(link);  // Navigates to the specified URL in the newly opened window or tab
+
+        if (firstCall) { // On the first call, simply set the firstCall flag to false.
+            firstCall = false;
+        } else { // For subsequent calls, open a new window or tab based on the WindowType.
+            driver.switchTo().newWindow(type);
+        }
+
+        // Navigate to the specified URL in the newly opened window or tab.
+        driver.get(link);
         return driver;
     }
 
@@ -218,7 +232,7 @@ public class BrowserLauncher {
      * an empty set if no specific capabilities are provided.</p>
      *
      * @param browserInfo Information about the browser, including its name and other details necessary for creating the WebDriver.
-     * @param type The type of window operation (`WindowType`) that specifies whether to create a new tab or window.
+     * @param type        The type of window operation (`WindowType`) that specifies whether to create a new tab or window.
      * @return An instance of `WebDriver` that is either retrieved from the cache or newly created.
      *
      * <p>The method performs the following steps:</p>
@@ -231,7 +245,6 @@ public class BrowserLauncher {
      * </ol>
      *
      * <p>The method is synchronized to ensure thread safety when interacting with WebDriver management operations.</p>
-     *
      * @see BrowserInfo
      * @see WindowType
      * @see MutableCapabilities
@@ -483,7 +496,7 @@ public class BrowserLauncher {
             configuredBrowsers.stream()
                     .map(browserConfig -> browserConfig.getString("name").toLowerCase())
                     .filter(browserName -> this.browsers.stream().map(browser ->
-                                    browser.name().toLowerCase()).toList().contains(browserName))
+                            browser.name().toLowerCase()).toList().contains(browserName))
                     .forEach(browserName -> withOptions(browserName, createCapabilities(browserName, optionsConfig)));
 
             return this;
@@ -607,6 +620,23 @@ public class BrowserLauncher {
                             .or(ElementMatchers.named("addPreference"))
                             .or(ElementMatchers.named("setCapability"))
             );
+        }
+
+        /**
+         * This method is provided to override the default Lombok-generated setter for the {@code firstCall} variable.
+         * It ensures that the {@code firstCall} variable remains immutable from external access by effectively preventing
+         * any changes to its value through this method.
+         *
+         * <p>The method returns {@code this} to allow for method chaining, as typically expected in builder patterns.
+         * However, since the method does not actually modify the {@code firstCall} variable, it is solely intended
+         * to suppress the Lombok-generated setter and ensure that the value of {@code firstCall} is not altered externally.</p>
+         *
+         * @param firstCall the value intended to be set for the {@code firstCall} variable, which is ignored.
+         * @return the current instance of the {@link BrowserLauncherBuilder} class, allowing for method chaining.
+         */
+        @SuppressWarnings("unused")
+        BrowserLauncherBuilder firstCall(boolean firstCall) {
+            return this;
         }
     }
 }

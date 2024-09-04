@@ -135,8 +135,7 @@ public class DriverUtils {
     @SneakyThrows({InvocationTargetException.class, NoSuchMethodException.class, IllegalAccessException.class, InstantiationException.class, ClassNotFoundException.class})
     public <T extends AbstractDriverOptions<T>> T createOptionsInstance(String browserName, MutableCapabilities capabilities) {
 
-        Preconditions.checkArgument(StringUtils.isNotBlank(browserName),
-                "Browser name cannot be blank");
+        Preconditions.checkArgument(StringUtils.isNotBlank(browserName), "Browser name cannot be blank");
 
         String normalizedBrowserName = StringUtils.removeEnd(browserName.toLowerCase(), "driver");
         String className = String.format("org.openqa.selenium.%s.%sOptions",
@@ -174,7 +173,7 @@ public class DriverUtils {
                 .filter(entry -> entry.getValue().equals(driver))
                 .map(Map.Entry::getKey)
                 .findAny()
-                .orElse(UUID.randomUUID().toString());
+                .orElseThrow(() -> new RuntimeException("No session found for driver: " + driver));
 
         log.debug("Retrieved session ID: {} from WebDriverCache [{}]", sessionId, cache);
         return sessionId;
@@ -196,10 +195,10 @@ public class DriverUtils {
      */
     public String getSessionId(WebDriver driver) {
         String sessionId = Optional.ofNullable(driver)
-                .filter(d -> d instanceof RemoteWebDriver)
-                .map(d -> ((RemoteWebDriver) d).getSessionId())
+                .filter(rDriver -> rDriver instanceof RemoteWebDriver)
+                .map(rDriver -> ((RemoteWebDriver) rDriver).getSessionId())
                 .map(Object::toString)
-                .orElse(UUID.randomUUID().toString());
+                .orElse(String.valueOf(System.identityHashCode(driver)));
 
         log.debug("Retrieved session ID: {}", sessionId);
         return sessionId;
