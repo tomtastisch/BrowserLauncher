@@ -7,6 +7,7 @@ import net.bytebuddy.matcher.ElementMatchers;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.browser.automation.core.BrowserDetector.BrowserInfo;
 import org.browser.automation.core.access.cache.functional.ConfigInvocationHandler;
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
 import org.browser.automation.core.annotation.Essential;
@@ -24,7 +25,6 @@ import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 
-import java.lang.ref.Cleaner;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,8 +69,6 @@ import java.util.concurrent.TimeUnit;
 @Builder(builderClassName = "BrowserLauncherBuilder", toBuilder = true)
 public class BrowserLauncher {
 
-    private static final Cleaner cleaner = Cleaner.create();
-
     @Builder.Default
     private String builderId = "";
 
@@ -94,7 +92,7 @@ public class BrowserLauncher {
      * A list of browser names (e.g., "Chrome", "Firefox") that will be used to open the URLs.
      * This field is annotated with {@link Essential}, meaning it is required for the execution of browser operations.
      */
-    private final List<String> browsers;
+    private final List<BrowserDetector.BrowserInfo> browsers;
 
     /**
      * A list of URLs that will be opened in the specified browsers.
@@ -182,60 +180,71 @@ public class BrowserLauncher {
      * If {@code useNewWindow} is true, a new window will be opened unless a window is already open for the specified browser.
      * If a window is already open, a new tab will be used instead.
      *
-     * @param browserName  the name of the browser (e.g., "Chrome", "Firefox").
+     * @param browserInfo  the name of the browser (e.g., "Chrome", "Firefox").
      * @param url          the URL to be opened.
      * @param useNewWindow if {@code true}, attempts to open a new window; otherwise, opens a new tab.
      * @return the {@link WebDriver} instance used for the operation.
      */
     @Synchronized
     @SneakyThrows
-    private WebDriver open(String browserName, String url, boolean useNewWindow) {
-        boolean isBrowserNotExists = !manager.isDriverCachedByName(browserName);
-        return open(browserName, url, (isBrowserNotExists && useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
+    private WebDriver open(BrowserInfo browserInfo, String url, boolean useNewWindow) {
+        boolean isBrowserNotExists = !manager.isDriverCachedByName(browserInfo.name());
+        return open(browserInfo, url, (isBrowserNotExists && useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
     }
 
     /**
      * Opens a link in either a new tab or a new window based on the specified {@code WindowType}.
      * This method uses the {@code WebDriver}'s {@code switchTo().newWindow} function to create the new browser context.
      *
-     * @param driverName the name of the {@link WebDriver} instance to be used.
-     * @param link       the URL to be opened in the new tab or window.
-     * @param type       the type of the window, represented by {@link WindowType}.
+     * @param browserInfo the name of the {@link WebDriver} instance to be used.
+     * @param link        the URL to be opened in the new tab or window.
+     * @param type        the type of the window, represented by {@link WindowType}.
      * @return the {@link WebDriver} instance used for the operation.
-     * @throws WebDriverInitializationException if the WebDriver instance cannot be initialized.
      */
     @Synchronized
-    private WebDriver open(String driverName, String link, WindowType type) throws WebDriverInitializationException {
-        WebDriver driver = handleBrowserOperation(driverName, type.toString());
+    private WebDriver open(BrowserInfo browserInfo, String link, WindowType type) {
+        WebDriver driver = handleBrowserOperation(browserInfo, type);
         driver.switchTo().newWindow(type);  // Switches to the new window or tab based on the specified WindowType
         driver.get(link);  // Navigates to the specified URL in the newly opened window or tab
         return driver;
     }
 
+
     /**
-     * Handles the logic for initializing or retrieving a {@link WebDriver} instance and performing
-     * a specific browser operation, such as opening a new window or tab.
+     * Handles operations related to the WebDriver for a specified browser and window type.
      *
-     * <p>The method logs the operation being performed and ensures that the correct
-     * {@link WebDriver} instance is retrieved or created. It utilizes the {@link BrowserManager}
-     * to manage and retrieve the WebDriver instances, configured with the appropriate
-     * {@link MutableCapabilities}.</p>
+     * <p>This method logs the type of operation being performed and retrieves or creates a WebDriver instance
+     * for the given `browserInfo` and `windowType`. It uses capabilities configured for the browser or defaults to
+     * an empty set if no specific capabilities are provided.</p>
      *
-     * <p>If the specified browser does not have custom capabilities configured,
-     * the method will use default capabilities.</p>
+     * @param browserInfo Information about the browser, including its name and other details necessary for creating the WebDriver.
+     * @param type The type of window operation (`WindowType`) that specifies whether to create a new tab or window.
+     * @return An instance of `WebDriver` that is either retrieved from the cache or newly created.
      *
-     * @param driverName    the name of the browser (e.g., "chrome", "firefox").
-     * @param operationType the type of operation being performed (e.g., "window" or "tab").
-     * @return the {@link WebDriver} instance associated with the operation.
-     * @throws WebDriverInitializationException if the {@link WebDriver} instance cannot be retrieved or created.
+     * <p>The method performs the following steps:</p>
+     * <ol>
+     *   <li>Logs the operation being performed, including the window type and browser information.</li>
+     *   <li>Retrieves the capabilities associated with the browser from the `options` map. If no specific capabilities
+     *       are configured, it defaults to a new `MutableCapabilities` instance.</li>
+     *   <li>Calls the {@link BrowserManager#getOrCreateDriver(BrowserInfo, MutableCapabilities, WindowType)} method on
+     *       the `manager` to retrieve or create a WebDriver instance based on the `browserInfo`, capabilities, and `windowType`.</li>
+     * </ol>
+     *
+     * <p>The method is synchronized to ensure thread safety when interacting with WebDriver management operations.</p>
+     *
+     * @see BrowserInfo
+     * @see WindowType
+     * @see MutableCapabilities
+     * @see WebDriver
+     * @see BrowserManager#getOrCreateDriver(BrowserInfo, MutableCapabilities, WindowType)
      */
     @Synchronized
-    private WebDriver handleBrowserOperation(String driverName, String operationType) throws WebDriverInitializationException {
-        log.info("Performing '{}' operation for driver: {}", operationType, driverName);
-        MutableCapabilities capabilities = options.getOrDefault(driverName.toLowerCase(), new MutableCapabilities());
+    private WebDriver handleBrowserOperation(BrowserInfo browserInfo, WindowType type) {
+        log.info("Performing '{}' operation for driver: {}", type, browserInfo);
+        MutableCapabilities capabilities = options.getOrDefault(browserInfo.name().toLowerCase(), new MutableCapabilities());
 
         // Retrieves or creates a new WebDriver instance for the specified browser
-        return manager.getOrCreateDriver(driverName, capabilities);
+        return manager.getOrCreateDriver(browserInfo, capabilities, type);
     }
 
     /**
@@ -333,8 +342,11 @@ public class BrowserLauncher {
                 throw new BrowserManagerNotInitializedException();
             }
 
-            this.browsers = Collections.singletonList(manager.getBrowserDetector()
-                    .getDefaultBrowserName(true));
+            this.browsers = Collections.singletonList(
+                    manager.getBrowserDetector()
+                            .getDefaultBrowserInfo(true)
+                            .orElseThrow()
+            );
 
             return this;
         }
@@ -372,9 +384,7 @@ public class BrowserLauncher {
                 throw new BrowserManagerNotInitializedException();
             }
 
-            this.browsers = manager.getBrowserDetector().getInstalledBrowsers()
-                    .stream().map(BrowserDetector.BrowserInfo::name)
-                    .toList();
+            this.browsers = manager.getBrowserDetector().getInstalledBrowsers();
 
             return this;
         }
@@ -447,10 +457,14 @@ public class BrowserLauncher {
          * <p>
          * Note: Ensure that at least one browser is configured using {@link #withDefaultBrowser()} or a similar
          * method before calling this method. Otherwise, a {@link NoBrowserConfiguredException} will be thrown.
+         * <p>
+         * This method should be used after at least one browser has been selected and configured. If called before
+         * browser selection, it will have no effect. The default options are only applied to browsers that have been
+         * configured; otherwise, no default options will be set.
          *
          * @return the current {@link BrowserLauncherBuilder} instance for chaining.
          * @throws NoBrowserConfiguredException if no browsers have been configured
-         *      in the current {@link BrowserLauncher} instance.
+         *                                      in the current {@link BrowserLauncher} instance.
          */
         public BrowserLauncherBuilder withDefaultOptions() throws NoBrowserConfiguredException {
 
@@ -468,7 +482,8 @@ public class BrowserLauncher {
             // Set default options for each configured browser, without overriding any existing manual configurations
             configuredBrowsers.stream()
                     .map(browserConfig -> browserConfig.getString("name").toLowerCase())
-                    .filter(browserName -> this.browsers.stream().map(String::toLowerCase).toList().contains(browserName))
+                    .filter(browserName -> this.browsers.stream().map(browser -> browser.name().toLowerCase()).toList()
+                            .contains(browserName))
                     .forEach(browserName -> withOptions(browserName, createCapabilities(browserName, optionsConfig)));
 
             return this;
@@ -503,7 +518,7 @@ public class BrowserLauncher {
          * </p>
          *
          * @return a reference to the current {@code BrowserLauncherBuilder} object,
-         *         allowing for method chaining.
+         * allowing for method chaining.
          * @see #applyBlacklistFilter(boolean)
          */
         public BrowserLauncherBuilder applyBlacklistFilter() {

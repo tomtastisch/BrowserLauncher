@@ -133,10 +133,13 @@ public class WebDriverCache {
     /**
      * Retrieves a {@code WebDriver} from the cache based on the specified driver name.
      * Searches through the values in the {@code driverCache} to find a {@code WebDriver}
-     * whose class name matches the given driver name.
+     * whose class name matches the given driver name, ignoring case differences.
+     * The comparison is performed in a case-insensitive manner using {@code equalsIgnoreCase},
+     * which means that "chrome", "Chrome", and "CHROME" will be considered equivalent
+     * when searching for a driver.
      *
      * @param driverName the name of the {@code WebDriver} class to search for.
-     * @return the {@code WebDriver} instance if found; null otherwise.
+     * @return the {@code WebDriver} instance if found; {@code null} otherwise.
      */
     public WebDriver getDriverByName(@NonNull String driverName) {
         return driverCacheContent.values().stream()

@@ -1,21 +1,19 @@
 package org.browser.automation.core;
 
-import com.google.common.base.Preconditions;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import org.browser.automation.core.BrowserDetector.BrowserInfo;
 import org.browser.automation.core.access.cache.AbstractWebDriverCacheManager;
 import org.browser.automation.core.access.cache.WebDriverCache;
 import org.browser.automation.exception.browser.driver.WebDriverInitializationException;
-import org.browser.automation.utils.DriverUtils;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.AbstractDriverOptions;
+import org.openqa.selenium.WindowType;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Objects;
 
 /**
  * The {@code BrowserManager} class is responsible for managing browser operations,
@@ -84,88 +82,97 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
     }
 
     /**
-     * Retrieves or creates a {@code WebDriver} instance based on the provided driver name.
-     * If a cached instance exists, it is returned; otherwise, a new instance is created,
-     * configured with default {@link MutableCapabilities}, added to the cache, and returned.
+     * Retrieves an existing `WebDriver` instance from the cache or creates a new one if not already cached.
      *
-     * <p>This method acts as a convenience overload that assumes default capabilities
-     * for the specified browser.</p>
+     * <p>This method first checks if a `WebDriver` instance for the specified browser (identified by `browserInfo`) is already
+     * present in the cache. If so, it retrieves the cached instance. If not, it attempts to create a new `WebDriver` instance using
+     * the `createWebDriver` method, caches it for future use, and then returns it. If the creation of a new WebDriver fails, an exception is thrown.</p>
      *
-     * @param driverName the name of the browser (e.g., "chrome", "firefox").
-     * @return the cached or newly created {@code WebDriver} instance.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created.
+     * @param browserInfo Information about the browser, including its name and other details necessary for creating the WebDriver.
+     * @param capabilities Optional capabilities to be used when creating the WebDriver, such as browser-specific options.
+     * @param type The type of window (`WindowType`) that specifies whether to create a new tab or window.
+     * @return An instance of `WebDriver` that is either retrieved from the cache or newly created.
+     * @throws RuntimeException If the creation of a new `WebDriver` instance fails due to a `WebDriverInitializationException`.
+     *
+     * <p>The method performs the following steps:</p>
+     * <ol>
+     *   <li>Checks if a `WebDriver` instance for the specified browser name is already cached.</li>
+     *   <li>If a cached instance is found, it is returned directly.</li>
+     *   <li>If no cached instance is found, it attempts to create a new `WebDriver` instance using the `createWebDriver` method.</li>
+     *   <li>The newly created `WebDriver` instance is then added to the cache for future use.</li>
+     *   <li>If an error occurs while creating the `WebDriver`, a `RuntimeException` is thrown with a message detailing the failure.</li>
+     * </ol>
+     *
+     * <p>The method is synchronized to ensure thread safety when accessing or modifying the WebDriver cache.</p>
+     *
+     * @see BrowserInfo
+     * @see MutableCapabilities
+     * @see WindowType
+     * @see WebDriverInitializationException
+     * @see WebDriverCache
      */
     @Synchronized
-    public WebDriver getOrCreateDriver(String driverName) throws WebDriverInitializationException {
-        return getOrCreateDriver(driverName, new MutableCapabilities());
-    }
+    public WebDriver getOrCreateDriver(BrowserInfo browserInfo, @Nullable MutableCapabilities capabilities, WindowType type) {
 
-    /**
-     * Retrieves or creates a {@code WebDriver} instance based on the provided driver name and custom capabilities.
-     * If a cached instance exists, it is returned; otherwise, a new instance is created,
-     * configured with the specified {@link MutableCapabilities}, added to the cache, and returned.
-     *
-     * <p>The method first checks the cache for an existing {@code WebDriver} instance associated with the
-     * specified browser name. If a matching instance is found, it is returned immediately. If no such instance
-     * exists, the method creates a new {@code WebDriver} using browser-specific options, which are determined
-     * by merging the provided capabilities with the default settings for that browser.</p>
-     *
-     * @param driverName   the name of the browser (e.g., "chrome", "firefox").
-     * @param capabilities the custom capabilities to configure the {@code WebDriver} instance.
-     * @return the cached or newly created {@code WebDriver} instance.
-     * @throws WebDriverInitializationException if the {@code WebDriver} instance could not be created.
-     */
-    @Synchronized
-    public WebDriver getOrCreateDriver(String driverName, MutableCapabilities capabilities) throws WebDriverInitializationException {
-        // Check if existing in the cache
-        WebDriver driver = getWebDriverCache().getDriverByName(driverName);
+        WebDriver driver;
 
-        if (Objects.isNull(driver)) {
-            AbstractDriverOptions<?> options = DriverUtils.createOptionsInstance(driverName, capabilities);
-
-            driver = createWebDriver(driverName, options);
-            getWebDriverCache().addDriver(driver);
+        // Check if the WebDriver for the specified browser is already cached
+        if (isDriverCachedByName(browserInfo.name())) {
+            // Retrieve the WebDriver from the cache
+            driver = getWebDriverCache().getDriverByName(browserInfo.name());
+        } else {
+            try {
+                // Create the WebDriver instance if not present in the cache
+                driver = createWebDriver(browserInfo, capabilities, type);
+                // Add the newly created WebDriver to the cache
+                getWebDriverCache().addDriver(driver);
+            } catch (WebDriverInitializationException e) {
+                // Handle the exception if WebDriver creation fails
+                throw new RuntimeException("Failed to create WebDriver for browser: " + browserInfo, e);
+            }
         }
 
         return driver;
     }
 
     /**
-     * Creates a new {@code WebDriver} instance based on the provided browser name and options.
+     * Creates and returns an instance of `WebDriver` based on the provided `BrowserInfo`, capabilities, and window type.
      *
-     * <p>This method dynamically identifies the appropriate {@code WebDriver} class based on the
-     * specified {@code driverName}. It then instantiates the driver using the provided
-     * {@link AbstractDriverOptions} to configure the browser instance.</p>
+     * <p>This method retrieves a list of installed browsers and filters it to find a browser matching the name specified in
+     * `browserInfo`. It then uses the `browserDetector` to instantiate a `WebDriver` for the matched browser with the provided
+     * capabilities and window type. If no matching browser is found, an exception is thrown.</p>
      *
-     * <p>Before instantiation, the method checks that the provided {@code AbstractDriverOptions} instance
-     * is compatible with the {@code WebDriver} being created. Compatibility is determined by checking if the
-     * {@code browserName} from the options partially matches the provided {@code driverName}. If the options
-     * are not compatible with the specified browser, a {@code WebDriverInitializationException} is thrown.</p>
+     * @param browserInfo Information about the browser, including its name and other relevant details.
+     * @param capabilities Optional capabilities to be set on the WebDriver, such as browser-specific options or configurations.
+     * @param type The type of window (`WindowType`) indicating whether to create a new tab or window.
+     * @return An instance of `WebDriver` configured according to the specified `browserInfo`, `capabilities`, and `type`.
+     * @throws WebDriverInitializationException If no matching browser is found or if the WebDriver cannot be instantiated.
      *
-     * <p>If no installed browser matches the provided {@code driverName}, the method throws a
-     * {@code WebDriverInitializationException} indicating that the specified browser is either
-     * unsupported or unavailable on the system.</p>
+     * <p>The method performs the following steps:</p>
+     * <ol>
+     *   <li>Retrieves a list of installed browsers from the `browserDetector`.</li>
+     *   <li>Filters the list to find a browser that matches the name specified in `browserInfo`.</li>
+     *   <li>If a matching browser is found, it uses `browserDetector` to instantiate a WebDriver for the browser, passing in the
+     *       provided capabilities and window type.</li>
+     *   <li>If no matching browser is found, throws a `WebDriverInitializationException` indicating that the browser is unsupported
+     *       or unavailable.</li>
+     * </ol>
      *
-     * @param driverName the name of the browser (e.g., "chrome", "firefox", "edge").
-     * @param options    the {@link AbstractDriverOptions} used to configure the {@code WebDriver} instance.
-     * @return a new instance of the corresponding {@code WebDriver} for the specified browser.
-     * @throws WebDriverInitializationException if the specified browser is unsupported or unavailable,
-     *                                          or if the {@code WebDriver} instance cannot be created.
+     * <p>The method is synchronized to ensure thread safety when creating WebDriver instances.</p>
+     *
+     * @see BrowserInfo
+     * @see MutableCapabilities
+     * @see WindowType
+     * @see WebDriverInitializationException
+     * @see BrowserDetector
      */
     @Synchronized
-    public WebDriver createWebDriver(String driverName, AbstractDriverOptions<?> options) throws WebDriverInitializationException {
-        // Check if the provided options are compatible with the WebDriver
-        Preconditions.checkArgument(
-                StringUtils.containsIgnoreCase(options.getBrowserName(), driverName),
-                "Provided options (%s) are not compatible with the %s driver, expected options for %s.",
-                options.getClass().getSimpleName(), driverName, options.getBrowserName()
-        );
-
+    public WebDriver createWebDriver(BrowserInfo browserInfo, @Nullable MutableCapabilities capabilities, WindowType type) throws WebDriverInitializationException {
         // Instantiate the WebDriver using the provided options
         return browserDetector.getInstalledBrowsers().stream()
-                .filter(browser -> browser.name().equalsIgnoreCase(driverName))
+                .filter(browser -> browser.name().equalsIgnoreCase(browserInfo.name()))
                 .findFirst()
-                .map(browser -> browserDetector.instantiateDriver(browser.driverClass(), options))
-                .orElseThrow(() -> new WebDriverInitializationException("Unsupported or unavailable browser: " + driverName));
+                .map(browser -> browserDetector.instantiateDriver(browser, capabilities, type))
+                .orElseThrow(() -> new WebDriverInitializationException("Unsupported or unavailable browser: " + browserInfo));
     }
 }

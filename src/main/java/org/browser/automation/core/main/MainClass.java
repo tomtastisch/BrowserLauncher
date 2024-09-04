@@ -31,6 +31,7 @@ class MainClass {
                 .applyBlacklistFilter() // Filter function
                 .withDefaultOptions()
                 .autoCleanUp()
+                .useNewWindow(false)
                 .build();
 
         // Execute the configured browser operations
