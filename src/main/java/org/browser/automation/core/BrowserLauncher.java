@@ -482,8 +482,8 @@ public class BrowserLauncher {
             // Set default options for each configured browser, without overriding any existing manual configurations
             configuredBrowsers.stream()
                     .map(browserConfig -> browserConfig.getString("name").toLowerCase())
-                    .filter(browserName -> this.browsers.stream().map(browser -> browser.name().toLowerCase()).toList()
-                            .contains(browserName))
+                    .filter(browserName -> this.browsers.stream().map(browser ->
+                                    browser.name().toLowerCase()).toList().contains(browserName))
                     .forEach(browserName -> withOptions(browserName, createCapabilities(browserName, optionsConfig)));
 
             return this;
@@ -544,10 +544,14 @@ public class BrowserLauncher {
          */
         public BrowserLauncherBuilder applyBlacklistFilter(boolean matchFullUrl) {
             urls = urls.stream()
-                    .filter(url -> !UrlUtil.isUrlBlacklisted(url, matchFullUrl))
-                    .peek(url -> log.info("URL '{}' is not blacklisted.", url))
+                    .filter(url -> {
+                        boolean isBlacklisted = UrlUtil.isUrlBlacklisted(url, matchFullUrl);
+                        if (isBlacklisted) {
+                            log.info("URL '{}' is blacklisted.", url);
+                        }
+                        return !isBlacklisted;
+                    })
                     .toList();
-
             return this;
         }
 

@@ -149,7 +149,7 @@ public abstract class AbstractWebDriverCacheManager implements WebDriverCacheMan
                 .flatMap(driver -> Optional.ofNullable(webDriverCache.removeDriver(driver)).stream())
                 .count();
 
-        log.info("Successfully closed {}/{} WebDriver instances.", successfullyClosed, initialSize);
+        log.info("Successfully closed {}/{} WebDriver connections.", successfullyClosed, initialSize);
     }
 
     /**
