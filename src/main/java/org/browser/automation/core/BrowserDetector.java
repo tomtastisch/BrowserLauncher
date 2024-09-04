@@ -408,8 +408,8 @@ public class BrowserDetector {
     }
 
     public WebDriver instantiateDriver(BrowserInfo browserInfo,
-                                                             @Nullable MutableCapabilities capabilities,
-                                                             WindowType type) {
+                                       @Nullable MutableCapabilities capabilities,
+                                       WindowType type) {
         return configureAndLaunchWebDrivers(browserInfo, capabilities, type);
     }
 
@@ -426,26 +426,25 @@ public class BrowserDetector {
      * @return An instance of `WebDriver` configured and launched based on the provided parameters.
      * @throws WebDriverException If an error occurs during the setup or instantiation of the WebDriver.
      *
-     *                            <p>The method performs the following steps:</p>
-     *                            <ol>
-     *                              <li>Initializes a `WebDriverManager` instance for the specified WebDriver class.</li>
-     *                              <li>Sets the cache path for the WebDriver binaries to the specified `cacheDirectory`.</li>
-     *                              <li>Forces the download of the WebDriver binaries, ensuring that the latest version is used.</li>
-     *                              <li>Sets the provided capabilities on the WebDriver manager.</li>
-     *                              <li>Executes the setup process to prepare the WebDriver binaries for use.</li>
-     *                              <li>Calls `DriverUtils.createWebDriverInstance` to create and return an instance of `WebDriver` with the specified
-     *                                  configurations and window type.</li>
-     *                            </ol>
+     * <p>The method performs the following steps:</p>
+     * <ol>
+     *   <li>Initializes a `WebDriverManager` instance for the specified WebDriver class.</li>
+     *   <li>Sets the cache path for the WebDriver binaries to the specified `cacheDirectory`.</li>
+     *   <li>Forces the download of the WebDriver binaries, ensuring that the latest version is used.</li>
+     *   <li>Sets the provided capabilities on the WebDriver manager.</li>
+     *   <li>Executes the setup process to prepare the WebDriver binaries for use.</li>
+     *   <li>Calls `DriverUtils.createWebDriverInstance` to create and return an instance of `WebDriver` with the specified configurations and window type.</li>
+     * </ol>
      *
-     *                            <p>The method is synchronized to ensure thread safety when configuring and launching WebDriver instances.</p>
+     * <p>The method is synchronized to ensure thread safety when configuring and launching WebDriver instances.</p>
      * @see WebDriverManager
      * @see DriverUtils#createWebDriverInstance(BrowserInfo, MutableCapabilities, WindowType)
      */
     @SneakyThrows
     @Synchronized
     private WebDriver configureAndLaunchWebDrivers(BrowserInfo browserInfo,
-                                                                         @Nullable MutableCapabilities capabilities,
-                                                                         WindowType type) throws WebDriverException {
+                                                   @Nullable MutableCapabilities capabilities,
+                                                   WindowType type) throws WebDriverException {
 
         // Initialize WebDriverManager for the specified WebDriver class.
         WebDriverManager manager = WebDriverManager.getInstance(browserInfo.driverClass())
