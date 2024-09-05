@@ -169,7 +169,7 @@ public class BrowserManager extends AbstractWebDriverCacheManager {
     @Synchronized
     public WebDriver createWebDriver(BrowserInfo browserInfo, @Nullable MutableCapabilities capabilities, WindowType type) throws WebDriverInitializationException {
         // Instantiate the WebDriver using the provided options
-        return browserDetector.getInstalledBrowsers().stream()
+        return browserDetector.getInstalledBrowserInfos().stream()
                 .filter(browser -> browser.name().equalsIgnoreCase(browserInfo.name()))
                 .findFirst()
                 .map(browser -> browserDetector.instantiateDriver(browser, capabilities, type))
