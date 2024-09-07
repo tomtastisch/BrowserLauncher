@@ -10,16 +10,52 @@ import net.bytebuddy.matcher.ElementMatcher;
 import java.lang.reflect.InvocationTargetException;
 
 /**
- * The {@code ByteBuddyUtils} class provides utility methods for creating dynamic instances of classes
- * using ByteBuddy with method interception.
+ * The {@code InvocationUtil} class provides utility methods for dynamically creating and configuring instances
+ * of classes using ByteBuddy and reflection. It supports the creation of dynamic instances with method interception,
+ * as well as the configuration of driver options with specific settings for browser automation.
+ * <p>
+ * This utility class includes methods for:
+ * <ul>
+ *     <li>Creating dynamic subclasses of classes using ByteBuddy, allowing for method interception and delegation.</li>
+ *     <li>Applying configurations to instances of driver options, such as setting capabilities and preferences.</li>
+ * </ul>
+ * The methods in this class facilitate dynamic class creation and configuration management, enabling flexible
+ * and powerful automation scenarios.
+ * </p>
  */
 @UtilityClass
-public class ByteBuddyUtils {
+public class InvocationUtil {
+
+    /**
+     * Enumeration representing the different types of options that can be applied to a driver options instance.
+     * This enum categorizes the configuration options into distinct types, allowing for more precise handling
+     * of configuration settings.
+     */
+    public enum OptionsType {
+        /**
+         * Represents command-line arguments that can be passed to the browser or driver.
+         * These arguments are typically used to customize the behavior of the browser at startup.
+         */
+        ARGUMENTS,
+
+        /**
+         * Represents user preferences or settings for the browser.
+         * These preferences may include custom configurations for the browser's behavior or appearance.
+         */
+        PREFERENCES,
+
+        /**
+         * Represents capabilities of the browser or driver.
+         * These capabilities are often used to define specific features or behaviors required for the browser
+         * or driver instance.
+         */
+        CAPABILITIES
+    }
 
     /**
      * Dynamically creates an instance of a class using ByteBuddy with method interception.
-     * This method allows the creation of a subclass of the specified target class, where
-     * specified methods are intercepted and handled by the provided handler instance.
+     * This method allows for the creation of a subclass of the specified target class, where
+     * methods matching the given matcher are intercepted and handled by the provided handler instance.
      *
      * @param <T>             the type of the class to be created.
      * @param targetClass     the class to be subclassed and dynamically instantiated.

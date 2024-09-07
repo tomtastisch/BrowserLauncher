@@ -3,7 +3,6 @@ package org.browser.automation.core;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,6 +10,7 @@ import lombok.SneakyThrows;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.browser.automation.exception.browser.driver.WebdriverNotFoundException;
 import org.browser.automation.exception.custom.PackageNotFoundException;
@@ -32,7 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 
 /**
  * The {@code BrowserDetector} class is responsible for detecting and managing browser-related configurations
@@ -68,6 +68,8 @@ import java.util.stream.Collectors;
 @ThreadSafe
 public class BrowserDetector {
 
+
+    private List<BrowserInfo> installedBrowsers;
     /**
      * The {@code Config} object representing the loaded configuration settings for the {@code BrowserDetector}.
      * This configuration is used to manage various browser-related settings, such as paths to browser executables,
@@ -210,7 +212,7 @@ public class BrowserDetector {
      * or the first available browser if the fallback is enabled. If neither is found, an empty {@code Optional} is returned.
      */
     public Optional<BrowserInfo> getDefaultBrowserInfo(boolean useFallbackBrowser) {
-        List<BrowserInfo> installedBrowsers = getInstalledBrowsers();
+        List<BrowserInfo> installedBrowsers = getInstalledBrowserInfos();
         Optional<BrowserInfo> defaultBrowser = findDefaultBrowser(installedBrowsers);
 
         // Return the default browser if found, or use fallback if requested
@@ -249,29 +251,42 @@ public class BrowserDetector {
     }
 
     /**
-     * Retrieves a list of all installed browsers based on the current operating system.
+     * Retrieves a list of installed browsers from the configured browsers based on the current operating system.
      *
-     * <p>This method reads browser configurations from the application configuration and
-     * determines which browsers are installed by checking the existence of the executable paths.
-     * It returns a list of {@code BrowserInfo} objects for each detected browser.</p>
+     * <p>This method reads browser configurations from the application configuration and filters out the browsers
+     * that are installed by checking the existence of their executable paths. It returns a list of {@code BrowserInfo}
+     * objects for each detected and installed browser that is listed in the configuration.</p>
      *
-     * <p>For details about how the paths and WebDriver classes are configured, please refer to the
+     * <p>For details about how the browser paths and WebDriver classes are configured, please refer to the
      * configuration file (e.g., "application.conf") in your project.</p>
      *
-     * @return A list of {@code BrowserInfo} objects representing installed browsers.
-     * If no browsers are detected or if the configuration is missing, an empty list is returned.
+     * @return A list of {@code BrowserInfo} objects representing the installed browsers that match the configuration.
+     * If no installed browsers are detected or if the configuration is missing, an empty list is returned.
      */
-    public List<BrowserInfo> getInstalledBrowsers() {
-        try {
-            return config.getConfigList("osBrowserPaths." + OSUtils.OS_KEY).stream()
-                    .filter(browser -> Files.exists(Paths.get(browser.getString("path"))))
-                    .map(BrowserDetector::getBrowserInfo)
-                    .flatMap(Optional::stream)
-                    .collect(Collectors.toList());
-        } catch (ConfigException.Missing e) {
-            log.error("Configuration for OS {} is missing.", OSUtils.OS_KEY, e);
-            return List.of();
+    protected List<BrowserInfo> getInstalledBrowserInfos() {
+        if (ObjectUtils.isEmpty(installedBrowsers)) {
+            installedBrowsers = getBrowserInfos(browser -> Files.exists(Paths.get(browser.getString("path"))));
         }
+        return installedBrowsers;
+    }
+
+    /**
+     * Retrieves a list of {@code BrowserInfo} objects based on a filtering predicate.
+     * <br>
+     * This method reads browser configurations from the application configuration, applies the specified filter,
+     * and returns a list of {@code BrowserInfo} objects. If no filter is applied, all configured browsers are included.
+     *
+     * @param filter A {@code Predicate<Config>} used to filter the browsers. Only those configurations that match
+     *               the predicate will be included in the result. If the filter is {@code null}, all configured browsers
+     *               are included.
+     * @return A {@code List<BrowserInfo>} containing information about browsers that match the filter criteria.
+     */
+    private List<BrowserInfo> getBrowserInfos(Predicate<? super Config> filter) {
+        return config.getConfigList("osBrowserPaths." + OSUtils.OS_KEY).stream()
+                .filter(ObjectUtils.isNotEmpty(filter) ? filter : e -> true)
+                .map(this::getBrowserInfo)
+                .flatMap(Optional::stream)
+                .toList();
     }
 
     /**
@@ -305,7 +320,7 @@ public class BrowserDetector {
      * @return An {@code Optional} containing the {@code BrowserInfo} if the WebDriver class can be resolved.
      */
     @SneakyThrows
-    private static Optional<BrowserInfo> getBrowserInfo(Config browser) {
+    private Optional<BrowserInfo> getBrowserInfo(Config browser) {
         String path = browser.getString("path");
         String driverClassName = browser.getString("driverClass");
         Class<? extends WebDriver> driverClass = getDriverClass(driverClassName);
@@ -349,7 +364,7 @@ public class BrowserDetector {
      * @param driverClassName The fully qualified name of the WebDriver class (e.g., "org.openqa.selenium.chrome.ChromeDriver").
      * @return The resolved {@link WebDriver} class associated with the specified driver class name.
      */
-    private synchronized static Class<? extends WebDriver> getDriverClass(String driverClassName) {
+    private synchronized Class<? extends WebDriver> getDriverClass(String driverClassName) {
         log.info("Resolving WebDriver class for: {}", driverClassName);
 
         // Retrieve the class from the cache or compute it if not present
