@@ -3,7 +3,6 @@ package org.browser.automation.core.main;
 import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.BrowserLauncher;
 import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
-import org.browser.automation.exception.browser.NoBrowserConfiguredException;
 import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
 import org.openqa.selenium.WebDriver;
 
@@ -18,7 +17,7 @@ class MainClass {
      *
      * @param args command-line arguments (not used).
      */
-    public static void main(String[] args) throws EssentialFieldsNotSetException, NoBrowserConfiguredException, BrowserManagerNotInitializedException {
+    public static void main(String[] args) throws EssentialFieldsNotSetException, BrowserManagerNotInitializedException {
 
         BrowserLauncher launcher = BrowserLauncher.builder()
                 .applyBrowserManager()

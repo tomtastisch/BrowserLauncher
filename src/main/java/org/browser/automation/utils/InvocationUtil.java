@@ -1,20 +1,13 @@
 package org.browser.automation.utils;
 
-import com.typesafe.config.Config;
-import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatcher;
-import org.apache.commons.lang3.reflect.ConstructorUtils;
-import org.openqa.selenium.MutableCapabilities;
-import org.openqa.selenium.remote.AbstractDriverOptions;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * The {@code InvocationUtil} class provides utility methods for dynamically creating and configuring instances

@@ -306,12 +306,6 @@ public class BrowserLauncher {
     @Slf4j
     public static class BrowserLauncherBuilder {
 
-        static final Map<String, String> NAME_PREFERENCES = Map.of(
-                "addArguments", "arguments",
-                "addPreference", "preferences",
-                "setCapability", "capabilities"
-        );
-
         /**
          * Configures the builder to use the default browser detected on the system.
          * <p>
