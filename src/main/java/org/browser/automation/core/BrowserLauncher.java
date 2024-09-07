@@ -445,18 +445,19 @@ public class BrowserLauncher {
         /**
          * Adds custom {@link MutableCapabilities} for all managed browsers.
          * <p>
-         * This method configures and adds {@link MutableCapabilities} for all browsers managed by the {@link BrowserLauncher}.
-         * It stores the provided capabilities in the builder's internal map of options, where the key is the lowercase name
-         * of the browser (e.g., "chrome", "firefox").
+         * This method allows you to configure and apply the same {@link MutableCapabilities} to all browsers managed by the {@link BrowserLauncher}.
+         * The provided capabilities are stored in the builder's internal options map, where each key is the lowercase name of the browser (e.g., "chrome", "firefox").
          * <p>
-         * The method sets the same capabilities for all browsers listed in the {@code browsers} collection. If you need to specify
-         * unique capabilities for individual browsers, you should use the method that takes a browser name as a parameter.
+         * The method iterates through the collection of browsers specified in the {@code browsers} field and applies the given capabilities to each browser.
+         * If you need to specify unique capabilities for individual browsers, use the method that allows setting capabilities for a specific browser by name.
+         * <p>
+         * This is particularly useful when you want to apply a uniform configuration to all browsers without specifying individual settings for each one.
          *
          * @param capabilities the {@link MutableCapabilities} to apply to all specified browsers.
-         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
+         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
          */
         public BrowserLauncherBuilder withSameOptions(MutableCapabilities capabilities) {
-            this.browsers.forEach(browser -> this.getOptions().putIfAbsent(browser.name().toLowerCase(), capabilities));
+            this.browsers.forEach(browser -> withOptions(browser.name(), capabilities));
             return this;
         }
 
@@ -469,15 +470,60 @@ public class BrowserLauncher {
          * If no custom capabilities have been set for the specified browser, this method has no effect. It only affects the
          * browser's entry in the internal options map if a corresponding entry exists.
          * <p>
-         * This method is useful for clearing any previously configured capabilities for a browser, allowing you to reset
-         * the configuration and potentially reconfigure it with new options.
+         * This method is useful for clearing any previously configured capabilities for a browser. It allows you to reset the
+         * configuration and potentially reconfigure the browser with new options.
          *
          * @param browserName the name of the browser for which the custom capabilities should be removed.
-         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
+         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
          */
         public BrowserLauncherBuilder resetOption(String browserName) {
             // Remove the custom capabilities for the specified browser from the internal map, if present
             this.getOptions().remove(browserName.toLowerCase());
+            return this;
+        }
+
+        /**
+         * Adds custom {@link MutableCapabilities} for a specified browser without overriding existing capabilities.
+         * <p>
+         * This method allows you to configure and add {@link MutableCapabilities} for a specific browser. It uses the
+         * {@link #withOptions(String, MutableCapabilities, boolean)} method with the `override` flag set to `false`, ensuring
+         * that existing capabilities for the browser are not replaced if they already exist.
+         * <p>
+         * This method is useful when you want to add new capabilities to a browser only if no existing capabilities are present,
+         * preserving any previously set configurations.
+         *
+         * @param browserName the name of the browser for which the custom capabilities should be set.
+         * @param capabilities the {@link MutableCapabilities} to set for the specified browser.
+         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
+         */
+        public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities) {
+            return withOptions(browserName, capabilities, false);
+        }
+
+        /**
+         * Adds custom {@link MutableCapabilities} for a specified browser.
+         * <p>
+         * This method allows you to configure and add {@link MutableCapabilities} for a specific browser. The browser name
+         * is used as the key in the internal options map, and the provided {@link MutableCapabilities} object contains
+         * the specific settings and configurations for that browser.
+         * <p>
+         * If the `override` flag is set to `true`, existing capabilities for the browser will be replaced with the new ones.
+         * If the `override` flag is set to `false`, the new capabilities will be added only if no existing capabilities are present.
+         * <p>
+         * This method is useful when you need to configure or update capabilities for individual browsers, either replacing
+         * existing settings or adding new ones if none are present.
+         *
+         * @param browserName the name of the browser for which the custom capabilities should be set.
+         * @param capabilities the {@link MutableCapabilities} to set for the specified browser.
+         * @param override if `true`, existing capabilities will be replaced; if `false`, capabilities will be added only if none exist.
+         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
+         */
+        public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities, boolean override) {
+            if (override) {
+                this.getOptions().put(browserName.toLowerCase(), capabilities);
+            } else {
+                this.getOptions().putIfAbsent(browserName.toLowerCase(), capabilities);
+            }
             return this;
         }
 
