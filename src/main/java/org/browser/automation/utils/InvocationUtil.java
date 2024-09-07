@@ -27,32 +27,6 @@ import java.lang.reflect.InvocationTargetException;
 public class InvocationUtil {
 
     /**
-     * Enumeration representing the different types of options that can be applied to a driver options instance.
-     * This enum categorizes the configuration options into distinct types, allowing for more precise handling
-     * of configuration settings.
-     */
-    public enum OptionsType {
-        /**
-         * Represents command-line arguments that can be passed to the browser or driver.
-         * These arguments are typically used to customize the behavior of the browser at startup.
-         */
-        ARGUMENTS,
-
-        /**
-         * Represents user preferences or settings for the browser.
-         * These preferences may include custom configurations for the browser's behavior or appearance.
-         */
-        PREFERENCES,
-
-        /**
-         * Represents capabilities of the browser or driver.
-         * These capabilities are often used to define specific features or behaviors required for the browser
-         * or driver instance.
-         */
-        CAPABILITIES
-    }
-
-    /**
      * Dynamically creates an instance of a class using ByteBuddy with method interception.
      * This method allows for the creation of a subclass of the specified target class, where
      * methods matching the given matcher are intercepted and handled by the provided handler instance.
