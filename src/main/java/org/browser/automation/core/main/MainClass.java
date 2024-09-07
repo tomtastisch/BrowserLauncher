@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.browser.automation.core.BrowserLauncher;
 import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
 import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
+import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 
 import java.util.List;
@@ -25,6 +26,7 @@ class MainClass {
                 .withUrls(List.of("https://example.com", "https://www.google.com",
                         // Intended specification of a URL listed as malware to ensure that the filter function works
                         "https://plantain-elk-b8pt.squarespace.com/api/comment/FlagComment"))
+                .withSameOptions(new MutableCapabilities())
                 .applyBlacklistFilter() // Filter function
                 .autoCleanUp()
                 // .useNewWindow(false) // <- Future implementation might be added here.

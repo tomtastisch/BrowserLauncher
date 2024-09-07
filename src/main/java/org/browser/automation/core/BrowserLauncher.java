@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * The {@code BrowserLauncher} class provides a high-level API for managing browser operations such as opening new
@@ -247,7 +248,7 @@ public class BrowserLauncher {
         log.info("Performing '{}' operation for driver: {}", type, browserInfo);
 
         MutableCapabilities capabilities = new MutableCapabilities();
-        if(ObjectUtils.isNotEmpty(options)) {
+        if (ObjectUtils.isNotEmpty(options)) {
             capabilities = options.getOrDefault(browserInfo.name().toLowerCase(), new MutableCapabilities());
         }
 
@@ -378,33 +379,47 @@ public class BrowserLauncher {
         }
 
         /**
-         * Filters the list of configured browsers to include only those that are installed on the system.
+         * Configures the builder with a list of {@link BrowserInfo} objects.
          * <p>
-         * This method first retrieves a list of installed browsers using the {@link BrowserDetector}. It then filters
-         * the provided list of browsers, keeping only those that are installed. For each browser that is not installed,
-         * an informational log message is generated indicating that the browser cannot be used in the further process.
-         * </p>
+         * This method takes a list of {@link BrowserInfo} objects, extracts their names, and uses the {@link #existingBrowsers(String...)}
+         * method to filter the installed browsers based on these names. The filtered list of installed browsers is then set
+         * for further configuration.
+         * <p>
+         * This method is useful for initializing the builder with a specific set of installed browsers, allowing you to
+         * configure options or settings only for the browsers that are actually present.
          *
-         * @param browsers The list of {@code BrowserInfo} objects representing browsers to be filtered.
-         * @return The updated {@code BrowserLauncherBuilder} instance, with the {@code browsers} list containing
-         * only the installed browsers. Browsers that are not installed will be excluded from the list.
+         * @param browsers a {@link List} of {@link BrowserInfo} objects representing the browsers to be used for configuration.
+         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
          */
-        public BrowserLauncherBuilder withBrowsers(List<BrowserInfo> browsers) {
-            // Retrieve a list of installed browsers
-            List<BrowserInfo> installedBrowsers = manager.getBrowserDetector().getInstalledBrowsers();
+        private BrowserLauncherBuilder withBrowsers(List<BrowserInfo> browsers) {
+            // Set the list of browsers based on the names extracted from the provided BrowserInfo objects
+            this.browsers = existingBrowsers(browsers.stream().map(BrowserInfo::name).toArray(String[]::new));
+            return this;
+        }
 
-            // Filter out browsers that are not installed and log a message for each excluded browser
-            this.browsers = browsers.stream()
-                    .filter(browser -> {
-                        boolean isInstalled = installedBrowsers.contains(browser);
-                        if (!isInstalled) {
-                            log.info("Browser: {} is not installed and will not be used in further processes.", browser);
-                        }
-                        return isInstalled;
-                    })
+        /**
+         * Checks if the specified browsers are installed and returns information about the existing ones.
+         * <p>
+         * This method accepts a variable number of browser names as arguments, converts them to lowercase for case-insensitive comparison,
+         * and filters the list of installed browsers to find matches. It then returns a list of {@link BrowserInfo} objects for the browsers
+         * that are installed and match the provided names.
+         * <p>
+         * If none of the specified browsers are installed, an empty list is returned.
+         *
+         * @param browserNames the names of the browsers to check for existence. The comparison is case-insensitive.
+         * @return a {@link List} of {@link BrowserInfo} objects representing the installed browsers that match the provided names.
+         */
+        public List<BrowserInfo> existingBrowsers(String... browserNames) {
+            // Convert the provided browser names to lowercase for case-insensitive comparison
+            List<String> names = Arrays.stream(browserNames)
+                    .map(String::toLowerCase)
                     .toList();
 
-            return this;
+            // Filter the list of installed browser information based on the provided names
+            return manager.getBrowserDetector().getInstalledBrowserInfos()
+                    .stream()
+                    .filter(browser -> names.contains(browser.name().toLowerCase()))
+                    .collect(Collectors.toList());
         }
 
         /**
@@ -443,87 +458,26 @@ public class BrowserLauncher {
         }
 
         /**
-         * Adds custom {@link MutableCapabilities} for all managed browsers.
+         * Applies the same {@link MutableCapabilities} to all managed browsers.
          * <p>
-         * This method allows you to configure and apply the same {@link MutableCapabilities} to all browsers managed by the {@link BrowserLauncher}.
-         * The provided capabilities are stored in the builder's internal options map, where each key is the lowercase name of the browser (e.g., "chrome", "firefox").
+         * This method configures and applies the same {@link MutableCapabilities} to all browsers listed in the {@code browsers} field of
+         * the {@link BrowserLauncher}. It stores the provided capabilities in the builder's internal options map, where each key
+         * corresponds to the lowercase name of a browser (e.g., "chrome", "firefox"), and the value is the provided {@link MutableCapabilities}.
          * <p>
-         * The method iterates through the collection of browsers specified in the {@code browsers} field and applies the given capabilities to each browser.
-         * If you need to specify unique capabilities for individual browsers, use the method that allows setting capabilities for a specific browser by name.
+         * The method uses the list of browsers obtained from the {@code browsers} field, and for each browser, it maps the browser name
+         * to the provided capabilities. This ensures that the same configuration is applied uniformly across all specified browsers.
+         * If you need to apply unique capabilities to individual browsers, use the method that allows specifying capabilities for a particular
+         * browser by name.
          * <p>
-         * This is particularly useful when you want to apply a uniform configuration to all browsers without specifying individual settings for each one.
+         * This approach is especially useful when you want to apply a consistent configuration to all browsers without having to set
+         * individual capabilities for each one.
          *
-         * @param capabilities the {@link MutableCapabilities} to apply to all specified browsers.
+         * @param capabilities the {@link MutableCapabilities} to be applied to all specified browsers.
          * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
          */
+        @SneakyThrows
         public BrowserLauncherBuilder withSameOptions(MutableCapabilities capabilities) {
-            this.browsers.forEach(browser -> withOptions(browser.name(), capabilities));
-            return this;
-        }
-
-        /**
-         * Removes custom {@link MutableCapabilities} for a specified browser.
-         * <p>
-         * This method removes any custom {@link MutableCapabilities} that have been configured for a specific browser from
-         * the builder's internal options map. The browser name is used as the key to identify and remove the associated capabilities.
-         * <p>
-         * If no custom capabilities have been set for the specified browser, this method has no effect. It only affects the
-         * browser's entry in the internal options map if a corresponding entry exists.
-         * <p>
-         * This method is useful for clearing any previously configured capabilities for a browser. It allows you to reset the
-         * configuration and potentially reconfigure the browser with new options.
-         *
-         * @param browserName the name of the browser for which the custom capabilities should be removed.
-         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
-         */
-        public BrowserLauncherBuilder resetOption(String browserName) {
-            // Remove the custom capabilities for the specified browser from the internal map, if present
-            this.getOptions().remove(browserName.toLowerCase());
-            return this;
-        }
-
-        /**
-         * Adds custom {@link MutableCapabilities} for a specified browser without overriding existing capabilities.
-         * <p>
-         * This method allows you to configure and add {@link MutableCapabilities} for a specific browser. It uses the
-         * {@link #withOptions(String, MutableCapabilities, boolean)} method with the `override` flag set to `false`, ensuring
-         * that existing capabilities for the browser are not replaced if they already exist.
-         * <p>
-         * This method is useful when you want to add new capabilities to a browser only if no existing capabilities are present,
-         * preserving any previously set configurations.
-         *
-         * @param browserName the name of the browser for which the custom capabilities should be set.
-         * @param capabilities the {@link MutableCapabilities} to set for the specified browser.
-         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
-         */
-        public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities) {
-            return withOptions(browserName, capabilities, false);
-        }
-
-        /**
-         * Adds custom {@link MutableCapabilities} for a specified browser.
-         * <p>
-         * This method allows you to configure and add {@link MutableCapabilities} for a specific browser. The browser name
-         * is used as the key in the internal options map, and the provided {@link MutableCapabilities} object contains
-         * the specific settings and configurations for that browser.
-         * <p>
-         * If the `override` flag is set to `true`, existing capabilities for the browser will be replaced with the new ones.
-         * If the `override` flag is set to `false`, the new capabilities will be added only if no existing capabilities are present.
-         * <p>
-         * This method is useful when you need to configure or update capabilities for individual browsers, either replacing
-         * existing settings or adding new ones if none are present.
-         *
-         * @param browserName the name of the browser for which the custom capabilities should be set.
-         * @param capabilities the {@link MutableCapabilities} to set for the specified browser.
-         * @param override if `true`, existing capabilities will be replaced; if `false`, capabilities will be added only if none exist.
-         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
-         */
-        public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities, boolean override) {
-            if (override) {
-                this.getOptions().put(browserName.toLowerCase(), capabilities);
-            } else {
-                this.getOptions().putIfAbsent(browserName.toLowerCase(), capabilities);
-            }
+            withOptions(this.browsers.stream().collect(Collectors.toMap(BrowserInfo::name, browser -> capabilities)));
             return this;
         }
 
@@ -629,28 +583,6 @@ public class BrowserLauncher {
         @SuppressWarnings("unused")
         BrowserLauncherBuilder firstCall(boolean firstCall) {
             return this;
-        }
-
-        /**
-         * Retrieves the map of browser-specific {@link MutableCapabilities} options.
-         *
-         * <p>This method returns the current map of {@link MutableCapabilities} options configured for each browser
-         * managed by the {@link BrowserLauncher}. The map's key is the lowercase name of the browser (e.g., "chrome", "firefox"),
-         * and the value is a {@link MutableCapabilities} object containing the specific settings and configurations for that browser.
-         *
-         * <p>If the map is not initialized or is empty, the method initializes it as a {@link ConcurrentHashMap} to ensure thread safety.
-         * This initialization is done to handle concurrent access and modifications reliably.
-         *
-         * <p>By using this method, you can access and modify the browser options that have been set during the build process
-         * of the {@link BrowserLauncher}. This map allows you to add, update, or retrieve custom browser capabilities as needed.
-         *
-         * @return the map of browser-specific {@link MutableCapabilities} options.
-         */
-        Map<String, MutableCapabilities> getOptions() {
-            if (ObjectUtils.isEmpty(options)) {
-                options = new ConcurrentHashMap<>();
-            }
-            return options;
         }
     }
 }
