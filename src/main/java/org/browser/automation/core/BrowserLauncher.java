@@ -1,6 +1,5 @@
 package org.browser.automation.core;
 
-import com.typesafe.config.Config;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.bytebuddy.matcher.ElementMatchers;
@@ -8,17 +7,15 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.browser.automation.core.BrowserDetector.BrowserInfo;
-import org.browser.automation.core.access.cache.functional.ConfigInvocationHandler;
 import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
 import org.browser.automation.core.annotation.Essential;
 import org.browser.automation.core.annotation.handler.LockInvocationHandler;
 import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
 import org.browser.automation.exception.browser.NoBrowserConfiguredException;
 import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
-import org.browser.automation.utils.ByteBuddyUtils;
 import org.browser.automation.utils.DriverUtils;
+import org.browser.automation.utils.InvocationUtil;
 import org.browser.automation.utils.UrlUtil;
-import org.browser.config.ConfigurationProvider;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
@@ -108,26 +105,25 @@ public class BrowserLauncher {
     /**
      * Stores browser-specific {@link MutableCapabilities} options.
      *
-     * <p>This map configures custom browser options (capabilities) for each browser
-     * that the {@link BrowserLauncher} manages. The map's key is the lowercase
+     * <p>This map holds custom browser options (capabilities) for each browser
+     * managed by the {@link BrowserLauncher}. The key in the map is the lowercase
      * name of the browser (e.g., "chrome", "firefox"), and the value is a {@link MutableCapabilities}
-     * object containing the specific settings and configurations for that browser.
+     * object that contains specific settings and configurations for that browser.
      *
-     * <p>You set these options during the build process of the {@link BrowserLauncher} using
-     * the {@link BrowserLauncherBuilder#withOptions(String, MutableCapabilities)} or
-     * {@link BrowserLauncherBuilder#withDefaultOptions()} methods. The launcher applies
-     * these options when starting the browser, allowing you to add arguments, set preferences,
-     * or specify custom capabilities tailored to your needs.
+     * <p>You can configure these options during the build process of the {@link BrowserLauncher}
+     * using the {@link BrowserLauncherBuilder#withOptions(MutableCapabilities)} method to set options
+     * for all browsers, or use the {@link BrowserLauncherBuilder#withOptions(Map)}
+     * method to specify options for a particular browser by name.
      *
-     * <p>If you do not provide custom options for a specific browser, the launcher will use
-     * a default {@link MutableCapabilities} object when starting the browser.
+     * <p>When starting a browser, the launcher applies the configured options. If custom options
+     * are not provided for a particular browser, the launcher will use a default set of capabilities
+     * for that browser.
      *
      * <p>The map is initialized as a {@link ConcurrentHashMap} to ensure thread safety
-     * when multiple threads access or modify the map concurrently.
+     * when accessed or modified by multiple threads concurrently.
      */
     @Getter(AccessLevel.PROTECTED)
-    @Builder.Default
-    protected Map<String, MutableCapabilities> options = new ConcurrentHashMap<>();
+    protected Map<String, MutableCapabilities> options;
 
     /**
      * Validates the required fields and then executes the browser operations by opening the specified URLs
@@ -310,43 +306,34 @@ public class BrowserLauncher {
     @Slf4j
     public static class BrowserLauncherBuilder {
 
-        /**
-         * A temporary map used to store browser-specific {@link MutableCapabilities} options
-         * before they are added to the main {@code options} map of the {@link BrowserLauncherBuilder}.
-         *
-         * <p>This map holds the capabilities that are set via the {@link #withOptions(String, MutableCapabilities)} method.
-         * Once options are added to this map, they are transferred to the main {@code options} map using
-         * the {@link #withOptions(Map)} method, which integrates them into the builder's configuration.
-         *
-         * <p>The use of this intermediate map allows for efficient option management, ensuring that capabilities
-         * for each browser are stored and handled correctly before being finalized in the builder.
-         *
-         * <p>This map is initialized as a {@link ConcurrentHashMap} to ensure thread safety when multiple
-         * threads access or modify the map concurrently.
-         */
-        Map<String, MutableCapabilities> innerOptions = new ConcurrentHashMap<>();
+        static final Map<String, String> NAME_PREFERENCES = Map.of(
+                "addArguments", "arguments",
+                "addPreference", "preferences",
+                "setCapability", "capabilities"
+        );
 
         /**
          * Configures the builder to use the default browser detected on the system.
          * <p>
-         * This method uses the {@link BrowserDetector#getDefaultBrowserName(boolean)} method to automatically detect
-         * and set the default browser for the system. The method checks the system's configuration to identify the
-         * default web browser installed on the user's operating system. If the default browser cannot be determined,
-         * it uses a fallback mechanism to select the first available browser from the list of installed browsers,
-         * as indicated by the {@code useFallBackBrowser=true} parameter.
+         * This method utilizes the {@link BrowserDetector#getDefaultBrowserInfo(boolean)} method from the {@code BrowserDetector}
+         * class to automatically detect and set the default browser for the system. The detection process examines the system's
+         * configuration to identify the default web browser installed on the user's operating system. If the default browser cannot
+         * be determined, the method employs a fallback mechanism to select the first available browser from the list of installed
+         * browsers, as indicated by the {@code useFallBackBrowser=true} parameter.
          * <p>
-         * The {@code BrowserDetector} class provides the logic to identify the system's default browser by examining
-         * system-specific configurations, executing OS commands, and analyzing installed browsers. This detection process
-         * is robust and accommodates different operating systems by dynamically adapting to the environment.
+         * The {@code BrowserDetector} class provides robust logic for identifying the system's default browser by inspecting
+         * system-specific configurations, executing OS commands, and analyzing installed browsers. This detection process adapts
+         * dynamically to various operating systems and environments.
          * <p>
-         * If no browsers are installed or detected, and the fallback mechanism is triggered, the builder will set the first
-         * available browser from the list of installed browsers as the default. This could result in unexpected behavior if
-         * the chosen fallback browser is not the intended default browser for the user's context.
+         * If no browsers are detected or installed, and the fallback mechanism is triggered, the builder will select the first
+         * available browser from the list of installed browsers as the default. Be aware that this could result in unexpected
+         * behavior if the chosen fallback browser is not the intended default for the user's context.
          * <p>
-         * Note: This method should be called before any other method that requires a browser to be set, such as
-         * {@link #withDefaultOptions()} or {@link #applyBrowserManager()}, to avoid {@link NoBrowserConfiguredException}.
+         * Note: This method should be invoked before any other method that requires a browser to be set, such as
+         * {@link #applyBrowserManager()}, to prevent {@link NoBrowserConfiguredException}.
          *
-         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
+         * @throws BrowserManagerNotInitializedException if the {@code BrowserManager} instance is not initialized.
          */
         public BrowserLauncherBuilder withDefaultBrowser() throws BrowserManagerNotInitializedException {
             if (Objects.isNull(manager)) {
@@ -405,7 +392,7 @@ public class BrowserLauncher {
          *
          * @param browsers The list of {@code BrowserInfo} objects representing browsers to be filtered.
          * @return The updated {@code BrowserLauncherBuilder} instance, with the {@code browsers} list containing
-         *         only the installed browsers. Browsers that are not installed will be excluded from the list.
+         * only the installed browsers. Browsers that are not installed will be excluded from the list.
          */
         public BrowserLauncherBuilder withBrowsers(List<BrowserInfo> browsers) {
             // Retrieve a list of installed browsers
@@ -453,7 +440,7 @@ public class BrowserLauncher {
          */
         @SneakyThrows
         public BrowserLauncherBuilder applyBrowserManager() {
-            return withManager(ByteBuddyUtils.createInstance(
+            return withManager(InvocationUtil.createInstance(
                     BrowserManager.class,
                     LockInvocationHandler.class,
                     ElementMatchers.isDeclaredBy(WebDriverCacheManager.class)
@@ -461,66 +448,41 @@ public class BrowserLauncher {
         }
 
         /**
-         * Configures the builder with the default {@link MutableCapabilities} for each browser configured in the {@link BrowserLauncher}.
+         * Adds custom {@link MutableCapabilities} for all managed browsers.
          * <p>
-         * This method loads the default options from a configuration file and sets them for each browser in the builder.
-         * It uses ByteBuddy to dynamically create a proxy for the {@link MutableCapabilities} class, allowing the
-         * options to be configured based on the specific browser. The options are stored in the builder's internal map.
+         * This method configures and adds {@link MutableCapabilities} for all browsers managed by the {@link BrowserLauncher}.
+         * It stores the provided capabilities in the builder's internal map of options, where the key is the lowercase name
+         * of the browser (e.g., "chrome", "firefox").
          * <p>
-         * If {@link #withOptions(String, MutableCapabilities)} was called before this method, any already
-         * configured capabilities for a browser will not be overwritten. This ensures that manually set options take
-         * precedence over default ones.
-         * <p>
-         * Note: Ensure that at least one browser is configured using {@link #withDefaultBrowser()} or a similar
-         * method before calling this method. Otherwise, a {@link NoBrowserConfiguredException} will be thrown.
-         * <p>
-         * This method should be used after at least one browser has been selected and configured. If called before
-         * browser selection, it will have no effect. The default options are only applied to browsers that have been
-         * configured; otherwise, no default options will be set.
+         * The method sets the same capabilities for all browsers listed in the {@code browsers} collection. If you need to specify
+         * unique capabilities for individual browsers, you should use the method that takes a browser name as a parameter.
          *
-         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
-         * @throws NoBrowserConfiguredException if no browsers have been configured
-         *                                      in the current {@link BrowserLauncher} instance.
+         * @param capabilities the {@link MutableCapabilities} to apply to all specified browsers.
+         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
          */
-        public BrowserLauncherBuilder withDefaultOptions() throws NoBrowserConfiguredException {
-
-            // Ensure that at least one browser is configured
-            if (ObjectUtils.isEmpty(this.browsers)) {
-                throw new NoBrowserConfiguredException("No browsers configured in the current BrowserLauncher instance.");
-            }
-
-            // Load configurations with ConfigurationProvider
-            Config optionsConfig = ConfigurationProvider.getInstance("application_options").getConfig();
-            List<BrowserInfo> configuredBrowsers = manager.getBrowserDetector().getInstalledBrowsers();
-            List<String> namedBrowsers = this.browsers.stream().map(browser -> browser.name().toLowerCase()).toList();
-
-            // Set default options for each configured browser, without overriding any existing manual configurations
-            configuredBrowsers.stream()
-                    .map(browser -> browser.name().toLowerCase())
-                    .filter(namedBrowsers::contains)
-                    .forEach(browserName -> withOptions(browserName, createCapabilities(browserName, optionsConfig)));
-
+        public BrowserLauncherBuilder withOptions(MutableCapabilities capabilities) {
+            this.browsers.forEach(browser -> this.getOptions().putIfAbsent(browser.name().toLowerCase(), capabilities));
             return this;
         }
 
         /**
-         * Adds custom {@link MutableCapabilities} for a specified browser.
+         * Removes custom {@link MutableCapabilities} for a specified browser.
          * <p>
-         * This method allows you to manually configure and add {@link MutableCapabilities} for a specific browser.
-         * It stores the provided capabilities in the builder's internal map of options, where the key is the browser
-         * name.
+         * This method removes any custom {@link MutableCapabilities} that have been configured for a specific browser from
+         * the builder's internal options map. The browser name is used as the key to identify and remove the associated capabilities.
          * <p>
-         * This method can be used when you need to set specific capabilities that are not covered by the default options.
-         * If this method is called before {@link #withDefaultOptions()}, the manually added capabilities will not be
-         * overwritten.
+         * If no custom capabilities have been set for the specified browser, this method has no effect. It only affects the
+         * browser's entry in the internal options map if a corresponding entry exists.
+         * <p>
+         * This method is useful for clearing any previously configured capabilities for a browser, allowing you to reset
+         * the configuration and potentially reconfigure it with new options.
          *
-         * @param browserName  the name of the browser for which to set the capabilities.
-         * @param capabilities the {@link MutableCapabilities} to set for the specified browser.
-         * @return the current {@link BrowserLauncherBuilder} instance for chaining.
+         * @param browserName the name of the browser for which the custom capabilities should be removed.
+         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
          */
-        public BrowserLauncherBuilder withOptions(String browserName, MutableCapabilities capabilities) {
-            innerOptions.putIfAbsent(browserName, capabilities);
-            withOptions(innerOptions);
+        public BrowserLauncherBuilder resetOption(String browserName) {
+            // Remove the custom capabilities for the specified browser from the internal map, if present
+            this.getOptions().remove(browserName.toLowerCase());
             return this;
         }
 
@@ -609,32 +571,6 @@ public class BrowserLauncher {
         }
 
         /**
-         * Dynamically creates and configures the {@link MutableCapabilities} for the specified browser.
-         * <p>
-         * This method uses ByteBuddy to create a subclass of {@link MutableCapabilities}, which acts as a proxy
-         * for the browser-specific options. The method configures the capabilities by intercepting method calls
-         * such as {@code addArguments}, {@code addPreference}, and {@code setCapability}, and applies the configuration
-         * values defined in the specified configuration file.
-         * <p>
-         * This method is typically used internally by {@link #withDefaultOptions()} to generate the default capabilities
-         * for each browser. It can also be extended or modified to suit different configuration needs.
-         *
-         * @param browserName   the name of the browser for which to create and configure the capabilities.
-         * @param optionsConfig the configuration file containing the browser options.
-         * @return the dynamically created and configured {@link MutableCapabilities} instance.
-         */
-        @SneakyThrows
-        private MutableCapabilities createCapabilities(String browserName, Config optionsConfig) {
-            return ByteBuddyUtils.createInstance(
-                    MutableCapabilities.class,
-                    new ConfigInvocationHandler(optionsConfig.getConfig("browserOptions." + browserName)),
-                    ElementMatchers.named("addArguments")
-                            .or(ElementMatchers.named("addPreference"))
-                            .or(ElementMatchers.named("setCapability"))
-            );
-        }
-
-        /**
          * This method is provided to override the default Lombok-generated setter for the {@code firstCall} variable.
          * It ensures that the {@code firstCall} variable remains immutable from external access by effectively preventing
          * any changes to its value through this method.
@@ -649,6 +585,28 @@ public class BrowserLauncher {
         @SuppressWarnings("unused")
         BrowserLauncherBuilder firstCall(boolean firstCall) {
             return this;
+        }
+
+        /**
+         * Retrieves the map of browser-specific {@link MutableCapabilities} options.
+         *
+         * <p>This method returns the current map of {@link MutableCapabilities} options configured for each browser
+         * managed by the {@link BrowserLauncher}. The map's key is the lowercase name of the browser (e.g., "chrome", "firefox"),
+         * and the value is a {@link MutableCapabilities} object containing the specific settings and configurations for that browser.
+         *
+         * <p>If the map is not initialized or is empty, the method initializes it as a {@link ConcurrentHashMap} to ensure thread safety.
+         * This initialization is done to handle concurrent access and modifications reliably.
+         *
+         * <p>By using this method, you can access and modify the browser options that have been set during the build process
+         * of the {@link BrowserLauncher}. This map allows you to add, update, or retrieve custom browser capabilities as needed.
+         *
+         * @return the map of browser-specific {@link MutableCapabilities} options.
+         */
+        Map<String, MutableCapabilities> getOptions() {
+            if (ObjectUtils.isEmpty(options)) {
+                options = new ConcurrentHashMap<>();
+            }
+            return options;
         }
     }
 }

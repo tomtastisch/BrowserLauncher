@@ -27,7 +27,6 @@ class MainClass {
                         // Intended specification of a URL listed as malware to ensure that the filter function works
                         "https://plantain-elk-b8pt.squarespace.com/api/comment/FlagComment"))
                 .applyBlacklistFilter() // Filter function
-                .withDefaultOptions()
                 .autoCleanUp()
                 // .useNewWindow(false) // <- Future implementation might be added here.
                 .build();
