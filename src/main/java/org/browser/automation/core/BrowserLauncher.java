@@ -64,9 +64,6 @@ import java.util.concurrent.TimeUnit;
 @Builder(builderClassName = "BrowserLauncherBuilder", toBuilder = true, setterPrefix = "with")
 public class BrowserLauncher {
 
-    @Builder.Default
-    private String builderId = "";
-
     /**
      * The {@link BrowserManager} instance responsible for managing and retrieving {@link WebDriver} instances.
      */
@@ -111,7 +108,7 @@ public class BrowserLauncher {
      * object that contains specific settings and configurations for that browser.
      *
      * <p>You can configure these options during the build process of the {@link BrowserLauncher}
-     * using the {@link BrowserLauncherBuilder#withOptions(MutableCapabilities)} method to set options
+     * using the {@link BrowserLauncherBuilder#withSameOptions(MutableCapabilities)} (MutableCapabilities)} method to set options
      * for all browsers, or use the {@link BrowserLauncherBuilder#withOptions(Map)}
      * method to specify options for a particular browser by name.
      *
@@ -122,8 +119,8 @@ public class BrowserLauncher {
      * <p>The map is initialized as a {@link ConcurrentHashMap} to ensure thread safety
      * when accessed or modified by multiple threads concurrently.
      */
-    @Getter(AccessLevel.PROTECTED)
-    protected Map<String, MutableCapabilities> options;
+    @Getter(AccessLevel.NONE)
+    private Map<String, MutableCapabilities> options;
 
     /**
      * Validates the required fields and then executes the browser operations by opening the specified URLs
@@ -142,9 +139,9 @@ public class BrowserLauncher {
      * </pre>
      *
      * @return a list of {@link WebDriver} instances used to open the URLs.
-     * @throws EssentialFieldsNotSetException if any required fields are missing.
      */
-    public List<WebDriver> validateAndExecute() throws EssentialFieldsNotSetException {
+    @SneakyThrows
+    public List<WebDriver> validateAndExecute() {
         validate();
         return execute();
     }
@@ -248,9 +245,13 @@ public class BrowserLauncher {
     @Synchronized
     private WebDriver handleBrowserOperation(BrowserInfo browserInfo, WindowType type) {
         log.info("Performing '{}' operation for driver: {}", type, browserInfo);
-        MutableCapabilities capabilities = options.getOrDefault(browserInfo.name().toLowerCase(), new MutableCapabilities());
 
-        // Retrieves or creates a new WebDriver instance for the specified browser
+        MutableCapabilities capabilities = new MutableCapabilities();
+        if(ObjectUtils.isNotEmpty(options)) {
+            capabilities = options.getOrDefault(browserInfo.name().toLowerCase(), new MutableCapabilities());
+        }
+
+        // Retrieves or creates a ^new WebDriver instance for the specified browser
         return manager.getOrCreateDriver(browserInfo, capabilities, type);
     }
 
@@ -327,9 +328,9 @@ public class BrowserLauncher {
          * {@link #applyBrowserManager()}, to prevent {@link NoBrowserConfiguredException}.
          *
          * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
-         * @throws BrowserManagerNotInitializedException if the {@code BrowserManager} instance is not initialized.
          */
-        public BrowserLauncherBuilder withDefaultBrowser() throws BrowserManagerNotInitializedException {
+        @SneakyThrows
+        public BrowserLauncherBuilder withDefaultBrowser() {
             if (Objects.isNull(manager)) {
                 throw new BrowserManagerNotInitializedException();
             }
@@ -454,7 +455,7 @@ public class BrowserLauncher {
          * @param capabilities the {@link MutableCapabilities} to apply to all specified browsers.
          * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
          */
-        public BrowserLauncherBuilder withOptions(MutableCapabilities capabilities) {
+        public BrowserLauncherBuilder withSameOptions(MutableCapabilities capabilities) {
             this.browsers.forEach(browser -> this.getOptions().putIfAbsent(browser.name().toLowerCase(), capabilities));
             return this;
         }
@@ -547,19 +548,22 @@ public class BrowserLauncher {
 
             Optional.of(this.manager).ifPresent(mngr -> {
                 ExecutorService executor = Executors.newSingleThreadExecutor();
-
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    executor.submit(manager::clearAllDrivers);
-                    executor.shutdown();
-                    try {
-                        if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                try {
+                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                        executor.submit(manager::clearAllDrivers);
+                        executor.shutdown();
+                        try {
+                            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                                executor.shutdownNow();
+                            }
+                        } catch (InterruptedException e) {
                             executor.shutdownNow();
+                            Thread.currentThread().interrupt();
                         }
-                    } catch (InterruptedException e) {
-                        executor.shutdownNow();
-                        Thread.currentThread().interrupt();
-                    }
-                }));
+                    }));
+                } catch (Exception e) {
+                    log.info("Failed to shutdown executor: {}", e.getMessage());
+                }
             });
             return this;
         }
