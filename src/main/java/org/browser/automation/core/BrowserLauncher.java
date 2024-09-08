@@ -22,7 +22,6 @@ import org.openqa.selenium.WindowType;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -78,6 +77,7 @@ public class BrowserLauncher {
      * If {@code false}, all URLs will open in new tabs within an existing browser window.
      * If {@code true}, each URL will open in its own new window.
      */
+    @Getter(AccessLevel.NONE)
     @Builder.Default
     private boolean useNewWindow = false;
 
@@ -103,24 +103,20 @@ public class BrowserLauncher {
     /**
      * Stores browser-specific {@link MutableCapabilities} options.
      *
-     * <p>This map holds custom browser options (capabilities) for each browser
-     * managed by the {@link BrowserLauncher}. The key in the map is the lowercase
-     * name of the browser (e.g., "chrome", "firefox"), and the value is a {@link MutableCapabilities}
-     * object that contains specific settings and configurations for that browser.
+     * <p>This map holds custom browser options (capabilities) for each browser managed by the {@link BrowserLauncher}.
+     * The key in the map is the case-insensitive name of the browser (e.g., "chrome", "firefox"), and the value is a
+     * {@link MutableCapabilities} object containing specific configurations for that browser.
      *
-     * <p>You can configure these options during the build process of the {@link BrowserLauncher}
-     * using the {@link BrowserLauncherBuilder#withSameOptions(MutableCapabilities)} (MutableCapabilities)} method to set options
-     * for all browsers, or use the {@link BrowserLauncherBuilder#withOptions(Map)}
-     * method to specify options for a particular browser by name.
+     * <p>You can configure these options using the {@link BrowserLauncherBuilder#withSameOptions(MutableCapabilities)}
+     * method to apply the same settings to all browsers, or the {@link BrowserLauncherBuilder#withOptions(Map)} method
+     * to apply specific settings per browser by name.
      *
-     * <p>When starting a browser, the launcher applies the configured options. If custom options
-     * are not provided for a particular browser, the launcher will use a default set of capabilities
-     * for that browser.
+     * <p>When a browser is started, the launcher applies the configured options. If no custom options are provided for a
+     * particular browser, the launcher uses a default set of capabilities for that browser.
      *
-     * <p>The map is initialized as a {@link ConcurrentHashMap} to ensure thread safety
-     * when accessed or modified by multiple threads concurrently.
+     * <p>The map is initialized as a synchronized {@link TreeMap} with case-insensitive keys to ensure both
+     * thread safety and case-insensitive browser name matching when accessed by multiple threads concurrently.
      */
-    @Getter(AccessLevel.NONE)
     private Map<String, MutableCapabilities> options;
 
     /**
@@ -459,25 +455,53 @@ public class BrowserLauncher {
 
         /**
          * Applies the same {@link MutableCapabilities} to all managed browsers.
-         * <p>
-         * This method configures and applies the same {@link MutableCapabilities} to all browsers listed in the {@code browsers} field of
-         * the {@link BrowserLauncher}. It stores the provided capabilities in the builder's internal options map, where each key
-         * corresponds to the lowercase name of a browser (e.g., "chrome", "firefox"), and the value is the provided {@link MutableCapabilities}.
-         * <p>
-         * The method uses the list of browsers obtained from the {@code browsers} field, and for each browser, it maps the browser name
-         * to the provided capabilities. This ensures that the same configuration is applied uniformly across all specified browsers.
-         * If you need to apply unique capabilities to individual browsers, use the method that allows specifying capabilities for a particular
-         * browser by name.
-         * <p>
-         * This approach is especially useful when you want to apply a consistent configuration to all browsers without having to set
-         * individual capabilities for each one.
+         *
+         * <p>This method configures and applies the same {@link MutableCapabilities} to all browsers listed in the {@code browsers} field of
+         * the {@link BrowserLauncher}. The capabilities are stored in the builder's internal options map, where each key
+         * is the case-insensitive name of a browser (e.g., "chrome", "firefox"), and the value is the provided {@link MutableCapabilities}.
+         *
+         * <p>The method uses the list of browsers obtained from the {@code browsers} field and maps each browser name
+         * to the provided capabilities, ensuring consistent configuration across all specified browsers.
+         * If unique capabilities need to be applied to individual browsers, use the {@link #withOptions(Map)} method.
+         *
+         * <p>This is useful when you want to apply a uniform configuration to all browsers without specifying capabilities
+         * for each one individually.
          *
          * @param capabilities the {@link MutableCapabilities} to be applied to all specified browsers.
          * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
          */
-        @SneakyThrows
         public BrowserLauncherBuilder withSameOptions(MutableCapabilities capabilities) {
             withOptions(this.browsers.stream().collect(Collectors.toMap(BrowserInfo::name, browser -> capabilities)));
+            return this;
+        }
+
+        /**
+         * Adds browser-specific {@link MutableCapabilities} options to the builder.
+         *
+         * <p>This method allows specifying a map of browser options (capabilities), where the key is the case-insensitive
+         * name of the browser (e.g., "chrome", "firefox"), and the value is the corresponding {@link MutableCapabilities}.
+         * The map is stored internally and is case-insensitive, meaning that browser names will be matched regardless
+         * of their case (e.g., "Chrome" and "chrome" are treated the same).
+         *
+         * <p>To ensure thread safety, the options map is initialized as a synchronized {@link TreeMap} with
+         * {@link String#CASE_INSENSITIVE_ORDER} if it is currently uninitialized (i.e., null). This ensures that the map can be
+         * safely accessed and modified by multiple threads concurrently while ignoring case when matching browser names.
+         *
+         * <p>Once the map is initialized, the provided capabilities will be added to the map. If a key already exists (i.e.,
+         * for a browser with the same name in any case format), its value will be overwritten.
+         *
+         * @param capabilities a map where the key is the case-insensitive browser name and the value is its corresponding {@link MutableCapabilities}.
+         * @return the current {@link BrowserLauncherBuilder} instance, allowing for method chaining.
+         */
+        public BrowserLauncherBuilder withOptions(Map<String, MutableCapabilities> capabilities) {
+            if (ObjectUtils.isEmpty(options)) {
+                options = Collections.synchronizedMap(new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
+            }
+
+            // Add all provided capabilities to the internal options map
+            // If a key already exists, its value will be overwritten
+            options.putAll(capabilities);
+
             return this;
         }
 

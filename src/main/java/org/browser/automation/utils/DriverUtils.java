@@ -20,7 +20,6 @@ import javax.annotation.Nullable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * The {@code DriverUtils} class provides utility methods for managing and instantiating {@link WebDriver} instances.
@@ -56,8 +55,8 @@ public class DriverUtils {
      * @throws IllegalAccessException    if the constructor or method cannot be accessed.
      */
     public WebDriver createWebDriverInstance(BrowserInfo browserInfo,
-                                                                   MutableCapabilities capabilities,
-                                                                   WindowType type)
+                                             MutableCapabilities capabilities,
+                                             WindowType type)
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
 
         AbstractDriverOptions<?> options = createOptionsInstance(browserInfo.driverClass().getSimpleName(), capabilities);
@@ -73,21 +72,21 @@ public class DriverUtils {
      * ensure that an already opened browser tab is used before creating a new driver instance.</p>
      *
      * @param browserInfo Information about the browser, including the WebDriver class and path for the WebDriver.
-     * @param options Options to be used when creating the WebDriver. This can be `ChromeOptions`, `FirefoxOptions`, etc.
-     * @param type The type of window indicating whether the WebDriver should be created for a new tab or a new window.
+     * @param options     Options to be used when creating the WebDriver. This can be `ChromeOptions`, `FirefoxOptions`, etc.
+     * @param type        The type of window indicating whether the WebDriver should be created for a new tab or a new window.
      * @return An instance of `WebDriver` created based on the provided information and options.
      * @throws InvocationTargetException If an error occurs while invoking the constructor.
-     * @throws InstantiationException If instantiation of the `WebDriver` object fails.
-     * @throws IllegalAccessException If access to the constructor is not allowed.
+     * @throws InstantiationException    If instantiation of the `WebDriver` object fails.
+     * @throws IllegalAccessException    If access to the constructor is not allowed.
      *
-     * <p>The method performs the following steps:</p>
-     * <ol>
-     *   <li>Checks if the `WindowType` is `TAB`. If so, sets a system property to use the already opened browser tab.</li>
-     *   <li>Checks if `options` is not empty. If so, invokes the constructor of the `WebDriver` class with the options.</li>
-     *   <li>If `options` is empty, invokes the default constructor of the `WebDriver` class.</li>
-     *   <li>Logs a success message if the WebDriver is successfully instantiated.</li>
-     *   <li>Catches `NoSuchMethodException` and logs an error if no suitable method is found.</li>
-     * </ol>
+     *                                   <p>The method performs the following steps:</p>
+     *                                   <ol>
+     *                                     <li>Checks if the `WindowType` is `TAB`. If so, sets a system property to use the already opened browser tab.</li>
+     *                                     <li>Checks if `options` is not empty. If so, invokes the constructor of the `WebDriver` class with the options.</li>
+     *                                     <li>If `options` is empty, invokes the default constructor of the `WebDriver` class.</li>
+     *                                     <li>Logs a success message if the WebDriver is successfully instantiated.</li>
+     *                                     <li>Catches `NoSuchMethodException` and logs an error if no suitable method is found.</li>
+     *                                   </ol>
      */
     public WebDriver createWebDriverInstance(BrowserInfo browserInfo, @Nullable AbstractDriverOptions<?> options, WindowType type)
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
@@ -98,7 +97,7 @@ public class DriverUtils {
         try {
 
             // If the window type is TAB, set a system property.
-            if(type.equals(WindowType.TAB)) {
+            if (type.equals(WindowType.TAB)) {
                 System.setProperty(browserInfo.driverClass().getName(), browserInfo.path());
                 // Future implementation might be added here.
             }
