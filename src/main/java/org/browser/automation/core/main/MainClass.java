@@ -18,7 +18,7 @@ class MainClass {
      *
      * @param args command-line arguments (not used).
      */
-    public static void main(String[] args) throws EssentialFieldsNotSetException, BrowserManagerNotInitializedException {
+    public static void main(String[] args) {
 
         BrowserLauncher launcher = BrowserLauncher.builder()
                 .applyBrowserManager()
@@ -33,11 +33,9 @@ class MainClass {
                 .build();
 
         // Execute the configured browser operations
-        List<WebDriver> drivers = launcher.validateAndExecute();
+        List<WebDriver> drivers = launcher.execute();
 
         // Output and close
         drivers.forEach(driver -> log.info(driver.toString()));
-
-        System.exit(0);
     }
 }

@@ -2,12 +2,14 @@ package org.browser.automation.exception.browser.driver;
 
 import org.browser.automation.exception.base.LocalizedExceptionBase;
 
+import java.io.Serializable;
+
 /**
  * Exception thrown when a WebDriver instance cannot be initialized or retrieved.
  * This exception is intended to indicate that the browser automation process
  * encountered an issue due to the inability to locate or create a WebDriver instance.
  */
-public class WebDriverInitializationException extends LocalizedExceptionBase {
+public class WebDriverInitializationException extends LocalizedExceptionBase implements Serializable {
 
   /**
    * Constructs a new {@code WebDriverInitializationException} with a detailed message

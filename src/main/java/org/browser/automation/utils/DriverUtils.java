@@ -1,25 +1,26 @@
 package org.browser.automation.utils;
 
-import com.google.common.base.Preconditions;
-import lombok.SneakyThrows;
-import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.browser.automation.core.BrowserDetector.BrowserInfo;
-import org.browser.automation.core.access.cache.WebDriverCache;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 import org.openqa.selenium.remote.AbstractDriverOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
-import javax.annotation.Nullable;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.Optional;
+import com.google.common.base.Preconditions;
+
+import lombok.SneakyThrows;
+import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The {@code DriverUtils} class provides utility methods for managing and instantiating {@link WebDriver} instances.
@@ -150,32 +151,6 @@ public class DriverUtils {
 
         log.debug("Created options instance for browser: {}", browserName);
         return options;
-    }
-
-    /**
-     * Retrieves the session ID of a {@link WebDriver} instance from the provided cache.
-     * This method searches the cache for a {@link WebDriver} instance that matches the given
-     * driver and returns its associated session ID if found.
-     *
-     * <p>The search is performed by iterating over the entries of the {@link WebDriverCache},
-     * comparing each cached WebDriver instance with the provided driver. If a match is found,
-     * the session ID of the matching WebDriver is returned.</p>
-     *
-     * <p>If no matching WebDriver is found in the cache, this method returns an empty string.</p>
-     *
-     * @param cache  the {@link WebDriverCache} instance containing cached WebDriver instances.
-     * @param driver the {@link WebDriver} instance whose session ID is to be retrieved.
-     * @return the session ID of the WebDriver if it is found in the cache, otherwise an empty string.
-     */
-    public String getSessionId(WebDriverCache cache, WebDriver driver) {
-        String sessionId = cache.getDriverCacheContent().entrySet().stream()
-                .filter(entry -> entry.getValue().equals(driver))
-                .map(Map.Entry::getKey)
-                .findAny()
-                .orElseThrow(() -> new RuntimeException("No session found for driver: " + driver));
-
-        log.debug("Retrieved session ID: {} from WebDriverCache [{}]", sessionId, cache);
-        return sessionId;
     }
 
     /**

@@ -1,14 +1,16 @@
 package org.browser.automation.core;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.typesafe.config.Config;
-import io.github.bonigarcia.wdm.WebDriverManager;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.SneakyThrows;
-import lombok.Synchronized;
-import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.SystemUtils;
@@ -24,15 +26,16 @@ import org.openqa.selenium.WindowType;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.ThreadSafe;
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.typesafe.config.Config;
+
+import io.github.bonigarcia.wdm.WebDriverManager;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.SneakyThrows;
+import lombok.Synchronized;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The {@code BrowserDetector} class is responsible for detecting and managing browser-related configurations
@@ -304,8 +307,9 @@ public class BrowserDetector {
     private Optional<BrowserInfo> parseBrowserFromOutput(String output, List<BrowserInfo> installedBrowsers) {
         return output.lines()
                 .map(String::trim)
-                .flatMap(line -> installedBrowsers.stream().filter(browser -> line.equalsIgnoreCase(browser.name)))
-                .reduce((a, b) -> b); // Returns the last match if there are multiple
+                .flatMap(line -> installedBrowsers.stream().filter(browser ->
+                        line.equalsIgnoreCase(browser.name))
+                ).reduce((a, b) -> b); // Returns the last match if there is multiple
     }
 
     /**

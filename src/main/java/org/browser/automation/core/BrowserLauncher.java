@@ -1,31 +1,25 @@
 package org.browser.automation.core;
 
-import lombok.*;
-import lombok.extern.slf4j.Slf4j;
-import net.bytebuddy.matcher.ElementMatchers;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.browser.automation.core.BrowserDetector.BrowserInfo;
-import org.browser.automation.core.access.cache.functional.WebDriverCacheManager;
-import org.browser.automation.core.annotation.Essential;
-import org.browser.automation.core.annotation.handler.LockInvocationHandler;
 import org.browser.automation.exception.browser.BrowserManagerNotInitializedException;
 import org.browser.automation.exception.browser.NoBrowserConfiguredException;
-import org.browser.automation.exception.custom.EssentialFieldsNotSetException;
 import org.browser.automation.utils.DriverUtils;
-import org.browser.automation.utils.InvocationUtil;
 import org.browser.automation.utils.UrlUtil;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WindowType;
 
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The {@code BrowserLauncher} class provides a high-level API for managing browser operations such as opening new
@@ -88,16 +82,8 @@ public class BrowserLauncher {
     @Builder.Default
     private boolean firstCall = true;
 
-    /**
-     * A list of browser names (e.g., "Chrome", "Firefox") that will be used to open the URLs.
-     * This field is annotated with {@link Essential}, meaning it is required for the execution of browser operations.
-     */
     private final List<BrowserDetector.BrowserInfo> browsers;
 
-    /**
-     * A list of URLs that will be opened in the specified browsers.
-     * This field is also annotated with {@link Essential}, indicating its necessity for the operation.
-     */
     private final List<String> urls;
 
     /**
@@ -119,55 +105,15 @@ public class BrowserLauncher {
      */
     private Map<String, MutableCapabilities> options;
 
-    /**
-     * Validates the required fields and then executes the browser operations by opening the specified URLs
-     * in the configured browsers. This method should be used when you want to ensure that all required fields
-     * are set before performing any browser operations.
-     *
-     * <p>Example usage:
-     * <pre>
-     * {@code
-     * BrowserLauncher launcher = BrowserLauncher.builder()
-     *      .withDefaultBrowser()
-     *      .urls(List.of("https://example.com", "https://www.google.com"))
-     *      .build();
-     * List<WebDriver> drivers = launcher.validateAndExecute();
-     * }
-     * </pre>
-     *
-     * @return a list of {@link WebDriver} instances used to open the URLs.
-     */
-    @SneakyThrows
-    public List<WebDriver> validateAndExecute() {
-        validate();
-        return execute();
-    }
-
-    /**
-     * Executes the browser operations that have been set up by opening the specified URLs in the designated browsers.
-     * After opening the URLs, any comparisons that have been configured will be executed.
-     * This method must be called after setting up the browser context to ensure that the necessary browser operations
-     * are performed.
-     * <br>
-     * <b>Note:</b> This method is considered <b>unsafe</b> for external use, meaning that it should be used with caution
-     * as it assumes that all necessary validations have been completed prior to its invocation. It is recommended to use
-     * {@link #validateAndExecute()} instead, which includes validation before execution.
-     *
-     * @return a list of {@link WebDriver} instances used to open the URLs.
-     */
     @Synchronized
-    List<WebDriver> execute() {
+    public List<WebDriver> execute() {
         return browsers.stream()
                 .flatMap(browser -> urls.stream().map(url -> open(browser, url, useNewWindow)))
                 .peek(driver ->
-                        // log the new created Browser
                         log.info("Browser: {}, Session ID: {}, Tab: {}, URL: {}",
-                                DriverUtils.getBrowserName(driver),
-                                DriverUtils.getSessionId(driver),
-                                driver.getWindowHandle(),
-                                driver.getCurrentUrl())
-                )
-                .toList();
+                                DriverUtils.getBrowserName(driver), DriverUtils.getSessionId(driver),
+                                driver.getWindowHandle(), driver.getCurrentUrl())
+                ).toList();
     }
 
     /**
@@ -183,7 +129,7 @@ public class BrowserLauncher {
     @Synchronized
     @SneakyThrows
     private WebDriver open(BrowserInfo browserInfo, String url, boolean useNewWindow) {
-        boolean isBrowserNotExists = !manager.isDriverCachedByName(browserInfo.name());
+        boolean isBrowserNotExists = !manager.containsBrowser(browserInfo.name());
         return open(browserInfo, url, (isBrowserNotExists && useNewWindow) ? WindowType.WINDOW : WindowType.TAB);
     }
 
@@ -197,8 +143,8 @@ public class BrowserLauncher {
      * @return the {@link WebDriver} instance used for the operation.
      */
     @Synchronized
-    private WebDriver open(BrowserInfo browserInfo, String link, WindowType type) {
-        WebDriver driver = handleBrowserOperation(browserInfo, type);
+    private WebDriver open(BrowserInfo browserInfo, String link, WindowType type) throws ExecutionException, InterruptedException {
+        WebDriver driver = handleBrowserOperation(browserInfo, type).get();
 
         if (firstCall) { // On the first call, simply set the firstCall flag to false.
             firstCall = false;
@@ -228,7 +174,7 @@ public class BrowserLauncher {
      *   <li>Logs the operation being performed, including the window type and browser information.</li>
      *   <li>Retrieves the capabilities associated with the browser from the `options` map. If no specific capabilities
      *       are configured, it defaults to a new `MutableCapabilities` instance.</li>
-     *   <li>Calls the {@link BrowserManager#getOrCreateDriver(BrowserInfo, MutableCapabilities, WindowType)} method on
+     *   <li>Calls the {@link BrowserManager#computeIfAbsent(BrowserInfo, MutableCapabilities, WindowType)} method on
      *       the `manager` to retrieve or create a WebDriver instance based on the `browserInfo`, capabilities, and `windowType`.</li>
      * </ol>
      *
@@ -237,10 +183,10 @@ public class BrowserLauncher {
      * @see WindowType
      * @see MutableCapabilities
      * @see WebDriver
-     * @see BrowserManager#getOrCreateDriver(BrowserInfo, MutableCapabilities, WindowType)
+     * @see BrowserManager#computeIfAbsent(BrowserInfo, MutableCapabilities, WindowType)
      */
     @Synchronized
-    private WebDriver handleBrowserOperation(BrowserInfo browserInfo, WindowType type) {
+    private CompletableFuture<WebDriver> handleBrowserOperation(BrowserInfo browserInfo, WindowType type) {
         log.info("Performing '{}' operation for driver: {}", type, browserInfo);
 
         MutableCapabilities capabilities = new MutableCapabilities();
@@ -249,36 +195,7 @@ public class BrowserLauncher {
         }
 
         // Retrieves or creates a ^new WebDriver instance for the specified browser
-        return manager.getOrCreateDriver(browserInfo, capabilities, type);
-    }
-
-    /**
-     * Validates that the required fields {@code browsers} and {@code urls} have been set.
-     * If any of these essential fields are not set, an {@link EssentialFieldsNotSetException} is thrown.
-     */
-    private void validate() throws EssentialFieldsNotSetException {
-        String missingFields = StringUtils.join(Arrays.stream(FieldUtils.getFieldsWithAnnotation(this.getClass(), Essential.class))
-                .filter(field -> ObjectUtils.isEmpty(readField(field)))
-                .map(Field::getName)
-                .toArray(String[]::new), ",");
-
-        if (ObjectUtils.isNotEmpty(missingFields)) {
-            // Throws an exception if essential fields are missing
-            throw new EssentialFieldsNotSetException(missingFields);
-        }
-    }
-
-    /**
-     * Reads the value of the specified field using reflection.
-     * This method is used to retrieve the values of fields annotated with {@link Essential}.
-     *
-     * @param field the field to be read.
-     * @return the value of the field.
-     */
-    @SneakyThrows
-    private Object readField(Field field) {
-        // Uses reflection to read the value of the specified field
-        return FieldUtils.readField(field, this, true);
+        return manager.computeIfAbsent(browserInfo, capabilities, type);
     }
 
     /**
@@ -337,6 +254,11 @@ public class BrowserLauncher {
                             .getDefaultBrowserInfo(true)
                             .orElseThrow()
             ));
+        }
+
+        public BrowserLauncherBuilder autoCleanUp() {
+            this.manager.updateCacheExpiration(10, TimeUnit.MINUTES);
+            return this;
         }
 
         /**
@@ -418,39 +340,9 @@ public class BrowserLauncher {
                     .collect(Collectors.toList());
         }
 
-        /**
-         * Configures the builder to use a dynamically created {@link BrowserManager} instance with method interception.
-         * <p>
-         * This method uses ByteBuddy to dynamically generate a subclass of {@link BrowserManager}, which acts as a proxy
-         * for method calls to intercept and manage them via {@link LockInvocationHandler}. The generated proxy intercepts
-         * method calls defined in {@link WebDriverCacheManager}, allowing the {@link LockInvocationHandler} to apply
-         * additional behavior such as synchronization, logging, or other cross-cutting concerns before delegating
-         * to the original {@link BrowserManager} implementation.
-         * </p>
-         * <p>
-         * By leveraging ByteBuddy for dynamic subclass generation and method interception, this approach offers
-         * flexibility in controlling method execution without altering the original {@link BrowserManager} code.
-         * </p>
-         * <p>
-         * After configuring the {@link BrowserManager} with the {@link LockInvocationHandler}, it is instantiated and
-         * assigned to the {@code manager} field of this builder. Note that if a {@code manager} instance was previously
-         * set using another method, it will be replaced by this dynamically created instance.
-         * </p>
-         * <p>
-         * Note: Ensure that a browser configuration has been set using {@link #withDefaultBrowser()} or a similar method
-         * before invoking this method. If no browser has been configured, calling this method may result in unexpected
-         * behavior.
-         * </p>
-         *
-         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
-         */
         @SneakyThrows
         public BrowserLauncherBuilder applyBrowserManager() {
-            return withManager(InvocationUtil.createInstance(
-                    BrowserManager.class,
-                    LockInvocationHandler.class,
-                    ElementMatchers.isDeclaredBy(WebDriverCacheManager.class)
-            ));
+            return withManager(BrowserManager.getInstance());
         }
 
         /**
@@ -483,7 +375,7 @@ public class BrowserLauncher {
          * The map is stored internally and is case-insensitive, meaning that browser names will be matched regardless
          * of their case (e.g., "Chrome" and "chrome" are treated the same).
          *
-         * <p>To ensure thread safety, the options map is initialized as a synchronized {@link TreeMap} with
+         * <p>To ensure thread safety, the option map is initialized as a synchronized {@link TreeMap} with
          * {@link String#CASE_INSENSITIVE_ORDER} if it is currently uninitialized (i.e., null). This ensures that the map can be
          * safely accessed and modified by multiple threads concurrently while ignoring case when matching browser names.
          *
@@ -547,65 +439,6 @@ public class BrowserLauncher {
                         return !isBlacklisted;
                     })
                     .toList();
-            return this;
-        }
-
-        /**
-         * Provides custom functionality for automatic cleanup of the {@link BrowserLauncher} instance.
-         * <p>
-         * This method registers a shutdown hook with the {@link Runtime} to ensure that all associated {@link WebDriver}
-         * instances are properly closed when the {@link BrowserLauncher} is no longer in use. The cleanup process
-         * is managed using an {@link ExecutorService} to handle the closing of drivers asynchronously. This method
-         * is not a standard Lombok builder method and is specifically provided to facilitate automatic resource management
-         * beyond the typical builder capabilities.
-         * </p>
-         *
-         * <p>
-         * When this method is invoked, it sets up a shutdown hook that will execute the cleanup actions when the JVM
-         * terminates. If the cleanup takes longer than expected, the executor service will forcefully shut down after
-         * a timeout period.
-         * </p>
-         *
-         * @return the current {@link BrowserLauncherBuilder} instance for method chaining.
-         */
-        public BrowserLauncherBuilder autoCleanUp() {
-
-            Optional.of(this.manager).ifPresent(mngr -> {
-                ExecutorService executor = Executors.newSingleThreadExecutor();
-                try {
-                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                        executor.submit(manager::clearAllDrivers);
-                        executor.shutdown();
-                        try {
-                            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
-                                executor.shutdownNow();
-                            }
-                        } catch (InterruptedException e) {
-                            executor.shutdownNow();
-                            Thread.currentThread().interrupt();
-                        }
-                    }));
-                } catch (Exception e) {
-                    log.info("Failed to shutdown executor: {}", e.getMessage());
-                }
-            });
-            return this;
-        }
-
-        /**
-         * This method is provided to override the default Lombok-generated setter for the {@code firstCall} variable.
-         * It ensures that the {@code firstCall} variable remains immutable from external access by effectively preventing
-         * any changes to its value through this method.
-         *
-         * <p>The method returns {@code this} to allow for method chaining, as typically expected in builder patterns.
-         * However, since the method does not actually modify the {@code firstCall} variable, it is solely intended
-         * to suppress the Lombok-generated setter and ensure that the value of {@code firstCall} is not altered externally.</p>
-         *
-         * @param firstCall the value intended to be set for the {@code firstCall} variable, which is ignored.
-         * @return the current instance of the {@link BrowserLauncherBuilder} class, allowing for method chaining.
-         */
-        @SuppressWarnings("unused")
-        BrowserLauncherBuilder firstCall(boolean firstCall) {
             return this;
         }
     }
